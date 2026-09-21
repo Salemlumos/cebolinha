@@ -3,10 +3,11 @@ import { join } from 'node:path';
 import { SlashCommandBuilder } from 'discord.js';
 import { getVoiceConnection } from '@discordjs/voice';
 import * as session from '../core/session.js';
+import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('cancel')
-  .setDescription('Descarta a gravação atual e apaga os áudios, sem transcrever.');
+  .setName('c-cancel')
+  .setDescription(c('Descarta a gravação atual e apaga os áudios, sem transcrever.'));
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
@@ -24,7 +25,7 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
 
   if (!result.success) {
     await interaction.reply({
-      content: 'Não há gravação ativa para cancelar.',
+      content: c('Não há gravação ativa para cancelar.'),
       ephemeral: true,
     });
     return;
@@ -44,5 +45,5 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
   }
 
   sessionManager.remove(guildId);
-  await interaction.editReply('🗑️ Gravação cancelada e áudios apagados.');
+  await interaction.editReply(`🗑️ ${c('Gravação cancelada e áudios apagados.')}`);
 }

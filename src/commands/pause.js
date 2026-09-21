@@ -1,9 +1,10 @@
 import { SlashCommandBuilder } from 'discord.js';
 import * as session from '../core/session.js';
+import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('pause')
-  .setDescription('Pausa a captura de áudio da gravação atual.');
+  .setName('c-pause')
+  .setDescription(c('Pausa a captura de áudio da gravação atual.'));
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
@@ -18,7 +19,7 @@ export async function execute(interaction, { sessionManager, recorderRegistry })
 
   if (!result.success) {
     await interaction.reply({
-      content: 'Não há gravação em andamento para pausar. Use `/status` para ver o estado atual.',
+      content: `${c('Não há gravação em andamento para pausar. Use')} \`/c-status\` ${c('para ver o estado atual.')}`,
       ephemeral: true,
     });
     return;
@@ -26,5 +27,5 @@ export async function execute(interaction, { sessionManager, recorderRegistry })
 
   sessionManager.set(guildId, result.session);
   recorderRegistry.get(guildId)?.pause();
-  await interaction.reply('⏸️ Gravação pausada. Novas falas não serão capturadas até o `/resume`.');
+  await interaction.reply(c('⏸️ Gravação pausada. Novas falas não serão capturadas até o') + ' `/c-resume`.');
 }

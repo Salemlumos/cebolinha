@@ -1,12 +1,13 @@
 import { SlashCommandBuilder } from 'discord.js';
+import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 const STATE_LABELS = {
-  idle: 'nenhuma gravação ativa',
-  recording: '🔴 gravando',
-  paused: '⏸️ pausada',
-  finishing: '⏳ finalizando',
-  done: '✅ concluída',
-  cancelled: '❌ cancelada',
+  idle: c('nenhuma gravação ativa'),
+  recording: `🔴 ${c('gravando')}`,
+  paused: `⏸️ ${c('pausada')}`,
+  finishing: `⏳ ${c('finalizando')}`,
+  done: `✅ ${c('concluída')}`,
+  cancelled: `❌ ${c('cancelada')}`,
 };
 
 function formatDuration(session) {
@@ -20,27 +21,30 @@ function formatDuration(session) {
 }
 
 export const data = new SlashCommandBuilder()
-  .setName('status')
-  .setDescription('Mostra o estado atual da gravação neste servidor.');
+  .setName('c-status')
+  .setDescription(c('Mostra o estado atual da gravação neste servidor.'));
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {{ sessionManager: import('../core/session-manager.js').ReturnType }} ctx
+ * @param {{ sessionManager: ReturnType<typeof import('../core/session-manager.js').createSessionManager> }} ctx
  */
 export async function execute(interaction, { sessionManager }) {
   const session = sessionManager.get(interaction.guildId);
 
   if (session.state === 'idle') {
-    await interaction.reply({ content: 'Nenhuma gravação ativa neste servidor. Use `/start` para começar.', ephemeral: true });
+    await interaction.reply({
+      content: `${c('Nenhuma gravação ativa neste servidor. Use')} \`/c-start\` ${c('para começar.')}`,
+      ephemeral: true,
+    });
     return;
   }
 
   const speakers = [...session.speakerIds];
   const lines = [
-    `Estado: ${STATE_LABELS[session.state] ?? session.state}`,
-    `Duração: ${formatDuration(session)}`,
-    `Segmentos capturados: ${session.segments.length}`,
-    `Participantes que já falaram: ${speakers.length > 0 ? speakers.map((id) => `<@${id}>`).join(', ') : 'ninguém ainda'}`,
+    `${c('Estado')}: ${STATE_LABELS[session.state] ?? session.state}`,
+    `${c('Duração')}: ${formatDuration(session)}`,
+    `${c('Segmentos capturados')}: ${session.segments.length}`,
+    `${c('Participantes que já falaram')}: ${speakers.length > 0 ? speakers.map((id) => `<@${id}>`).join(', ') : c('ninguém ainda')}`,
   ];
 
   await interaction.reply(lines.join('\n'));

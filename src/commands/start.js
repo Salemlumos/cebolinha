@@ -2,10 +2,11 @@ import { SlashCommandBuilder } from 'discord.js';
 import { joinVoiceChannel, VoiceConnectionStatus, entersState } from '@discordjs/voice';
 import * as session from '../core/session.js';
 import { createRecorder } from '../core/recorder.js';
+import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('start')
-  .setDescription('Inicia a gravação da call de voz atual (avisa todos no canal).');
+  .setName('c-start')
+  .setDescription(c('Inicia a gravação da call de voz atual (avisa todos no canal).'));
 
 async function resolveDisplayName(guild, userId) {
   const cached = guild.members.cache.get(userId);
@@ -31,7 +32,7 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
   const voiceChannel = interaction.member?.voice?.channel;
   if (!voiceChannel) {
     await interaction.reply({
-      content: 'Você precisa estar em um canal de voz para usar `/start`.',
+      content: `${c('Você precisa estar em um canal de voz para usar')} \`/c-start\`.`,
       ephemeral: true,
     });
     return;
@@ -47,7 +48,7 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
 
   if (!result.success) {
     await interaction.reply({
-      content: 'Já existe uma gravação em andamento neste servidor. Use `/status` para ver o estado atual.',
+      content: `${c('Já existe uma gravação em andamento neste servidor. Use')} \`/c-status\` ${c('para ver o estado atual.')}`,
       ephemeral: true,
     });
     return;
@@ -66,9 +67,9 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
     });
     await entersState(connection, VoiceConnectionStatus.Ready, 15_000);
   } catch (err) {
-    logger.error({ err: err.message, guildId }, 'Falha ao entrar no canal de voz em /start');
+    logger.error({ err: err.message, guildId }, 'Falha ao entrar no canal de voz em /c-start');
     sessionManager.remove(guildId);
-    await interaction.editReply('Não consegui entrar no canal de voz. Verifique minhas permissões e tente de novo.');
+    await interaction.editReply(c('Não consegui entrar no canal de voz. Verifique minhas permissões e tente de novo.'));
     return;
   }
 
@@ -89,6 +90,6 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
   recorderRegistry.set(guildId, recorder);
 
   await interaction.editReply(
-    `🔴 **Gravando esta call.** Entrei em **${voiceChannel.name}** — avisem quem ainda não sabia que a conversa está sendo registrada. Use \`/finish\` para encerrar e gerar a transcrição, ou \`/cancel\` para descartar.`,
+    `${c('🔴 **Gravando esta call.** Entrei em')} **${voiceChannel.name}** ${c('— avisem quem ainda não sabia que a conversa está sendo registrada. Use')} \`/c-finish\` ${c('para encerrar e gerar a transcrição, ou')} \`/c-cancel\` ${c('para descartar.')}`,
   );
 }

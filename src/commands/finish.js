@@ -6,10 +6,11 @@ import * as session from '../core/session.js';
 import { createTranscriber } from '../services/transcriber/index.js';
 import { transcribeSegments } from '../services/transcriber/run-batch.js';
 import { buildTranscript, splitTranscriptParts } from '../services/formatter.js';
+import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('finish')
-  .setDescription('Encerra a gravação, transcreve tudo e posta o resultado no canal.');
+  .setName('c-finish')
+  .setDescription(c('Encerra a gravação, transcreve tudo e posta o resultado no canal.'));
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
@@ -27,7 +28,7 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
 
   if (!result.success) {
     await interaction.reply({
-      content: 'Não há gravação ativa para finalizar. Use `/status` para ver o estado atual.',
+      content: `${c('Não há gravação ativa para finalizar. Use')} \`/c-status\` ${c('para ver o estado atual.')}`,
       ephemeral: true,
     });
     return;
@@ -44,7 +45,7 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
 
   if (finishingSession.segments.length === 0) {
     sessionManager.remove(guildId);
-    await interaction.editReply('Gravação encerrada, mas nenhuma fala foi capturada — nada para transcrever.');
+    await interaction.editReply(c('Gravação encerrada, mas nenhuma fala foi capturada — nada para transcrever.'));
     return;
   }
 
@@ -65,10 +66,10 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
       participants: [...finishingSession.speakerIds].map((id) => participantNames.get(id) ?? id),
     });
   } catch (err) {
-    logger.error({ err: err.message, guildId }, 'Falha ao transcrever sessão em /finish');
+    logger.error({ err: err.message, guildId }, 'Falha ao transcrever sessão em /c-finish');
     sessionManager.set(guildId, session.complete(finishingSession).session);
     await interaction.editReply(
-      'Encerrei a gravação, mas houve um erro ao transcrever. Os áudios foram mantidos em disco para uma nova tentativa manual.',
+      c('Encerrei a gravação, mas houve um erro ao transcrever. Os áudios foram mantidos em disco para uma nova tentativa manual.'),
     );
     return;
   }
@@ -82,11 +83,11 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
   );
 
   sessionManager.set(guildId, session.complete(finishingSession).session);
-  await interaction.editReply({ content: '✅ Gravação finalizada. Transcrição em anexo.', files });
+  await interaction.editReply({ content: `✅ ${c('Gravação finalizada. Transcrição em anexo.')}`, files });
 
   if (!env.KEEP_AUDIO) {
     await rm(join(env.DATA_DIR, 'sessions', finishingSession.id), { recursive: true, force: true }).catch((err) =>
-      logger.error({ err: err.message, guildId }, 'Falha ao apagar áudios após /finish'),
+      logger.error({ err: err.message, guildId }, 'Falha ao apagar áudios após /c-finish'),
     );
   }
 
