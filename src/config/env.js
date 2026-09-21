@@ -22,9 +22,15 @@ const envSchema = z
   .object({
     DISCORD_TOKEN: z.string().min(1, 'DISCORD_TOKEN é obrigatório'),
     DISCORD_CLIENT_ID: z.string().min(1, 'DISCORD_CLIENT_ID é obrigatório'),
-    DISCORD_GUILD_ID: z.string().min(1).optional(),
+    DISCORD_GUILD_ID: z
+      .string()
+      .optional()
+      .transform((value) => value || undefined),
     TRANSCRIBER_PROVIDER: z.enum(['openai']).default('openai'),
-    OPENAI_API_KEY: z.string().min(1).optional(),
+    OPENAI_API_KEY: z
+      .string()
+      .optional()
+      .transform((value) => value || undefined),
     TRANSCRIBE_MODEL: z.string().min(1).default('whisper-1'),
     TRANSCRIBE_LANGUAGE: z.string().min(1).default('pt'),
     SILENCE_MS: z.coerce.number().int().positive().default(1000),
