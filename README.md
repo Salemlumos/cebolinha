@@ -21,20 +21,24 @@ desenho completo e `docs/superpowers/plans/` para o plano de implementação.
 | `/cancel` | Descarta a sessão e apaga os áudios, sem transcrever. |
 | `/mute-all` / `/unmute-all` | Muta/desmuta todo mundo no canal de voz do bot (exceto o bot). Requer permissão "Mute Members". |
 
-## Transcrição — grátis por padrão, sem chave de API
+## Transcrição — grátis por padrão, roda fora do seu servidor
 
-Por padrão (`TRANSCRIBER_PROVIDER=local`), a transcrição roda **na própria
-máquina** via Whisper (`@huggingface/transformers`, modelo
-`Xenova/whisper-base`), sem custo e sem precisar de nenhuma chave de API. O
-modelo é baixado uma vez (alguns MB) e cacheado; depois disso, roda offline.
+Por padrão (`TRANSCRIBER_PROVIDER=groq`), a transcrição usa a [Groq](https://console.groq.com)
+— o mesmo modelo Whisper open-source (`whisper-large-v3-turbo`), só que
+hospedado no hardware deles (bem mais rápido que CPU comum), com tier
+gratuito, e **sem consumir CPU/RAM do servidor onde o bot roda**. Passos:
 
-Se preferir usar a API paga da OpenAI (mais rápida, geralmente mais precisa),
-troque no `.env`:
-```
-TRANSCRIBER_PROVIDER=openai
-OPENAI_API_KEY=sk-...
-TRANSCRIBE_MODEL=whisper-1
-```
+1. Crie uma conta grátis em https://console.groq.com
+2. Gere uma chave em https://console.groq.com/keys
+3. No `.env`: `GROQ_API_KEY=gsk-...`
+
+Outras opções (trocando `TRANSCRIBER_PROVIDER` no `.env`):
+
+- **`local`** — roda Whisper na própria máquina (`@huggingface/transformers`,
+  modelo `Xenova/whisper-base`), sem chave, sem serviço externo, mas usa
+  CPU/RAM do servidor do bot e é mais lento. Bom se não quiser depender de
+  nenhum serviço de terceiros.
+- **`openai`** — API paga da OpenAI. Exige `OPENAI_API_KEY` e `TRANSCRIBE_MODEL=whisper-1`.
 
 ## Requisitos
 

@@ -5,8 +5,9 @@ import { z } from 'zod';
  * @property {string} DISCORD_TOKEN
  * @property {string} DISCORD_CLIENT_ID
  * @property {string} [DISCORD_GUILD_ID]
- * @property {'local'|'openai'} TRANSCRIBER_PROVIDER
+ * @property {'groq'|'local'|'openai'} TRANSCRIBER_PROVIDER
  * @property {string} [OPENAI_API_KEY]
+ * @property {string} [GROQ_API_KEY]
  * @property {string} TRANSCRIBE_MODEL
  * @property {string} TRANSCRIBE_LANGUAGE
  * @property {number} SILENCE_MS
@@ -26,14 +27,22 @@ const envSchema = z
       .string()
       .optional()
       .transform((value) => value || undefined),
-    TRANSCRIBER_PROVIDER: z.enum(['local', 'openai']).default('local'),
+    // "groq": grátis, roda no serviço da Groq (não consome CPU do servidor
+    // do bot). "local": grátis, roda na própria máquina (offline, mais
+    // lento). "openai": pago.
+    TRANSCRIBER_PROVIDER: z.enum(['groq', 'local', 'openai']).default('groq'),
     OPENAI_API_KEY: z
       .string()
       .optional()
       .transform((value) => value || undefined),
-    // Default é o modelo do adaptador local (grátis, roda na máquina). Ao
-    // usar TRANSCRIBER_PROVIDER=openai, troque para algo como "whisper-1".
-    TRANSCRIBE_MODEL: z.string().min(1).default('Xenova/whisper-base'),
+    GROQ_API_KEY: z
+      .string()
+      .optional()
+      .transform((value) => value || undefined),
+    // Default é o modelo do adaptador Groq. Ao trocar TRANSCRIBER_PROVIDER,
+    // ajuste também: "local" usa nomes como "Xenova/whisper-base", "openai"
+    // usa "whisper-1".
+    TRANSCRIBE_MODEL: z.string().min(1).default('whisper-large-v3-turbo'),
     TRANSCRIBE_LANGUAGE: z.string().min(1).default('pt'),
     SILENCE_MS: z.coerce.number().int().positive().default(1000),
     MIN_SEGMENT_MS: z.coerce.number().int().positive().default(400),

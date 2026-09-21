@@ -13,8 +13,8 @@ describe('parseEnv', () => {
     expect(result.data).toMatchObject({
       DISCORD_TOKEN: 'token-123',
       DISCORD_CLIENT_ID: 'client-123',
-      TRANSCRIBER_PROVIDER: 'local',
-      TRANSCRIBE_MODEL: 'Xenova/whisper-base',
+      TRANSCRIBER_PROVIDER: 'groq',
+      TRANSCRIBE_MODEL: 'whisper-large-v3-turbo',
       TRANSCRIBE_LANGUAGE: 'pt',
       SILENCE_MS: 1000,
       MIN_SEGMENT_MS: 400,

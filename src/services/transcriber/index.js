@@ -1,5 +1,6 @@
 import { createLocalTranscriber } from './local.js';
 import { createOpenAiTranscriber } from './openai.js';
+import { createGroqTranscriber } from './groq.js';
 
 /**
  * @typedef {Object} TranscribeOptions
@@ -23,6 +24,12 @@ export function createTranscriber(env) {
       throw new Error('OPENAI_API_KEY é obrigatório quando TRANSCRIBER_PROVIDER=openai');
     }
     return createOpenAiTranscriber(env);
+  }
+  if (env.TRANSCRIBER_PROVIDER === 'groq') {
+    if (!env.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY é obrigatório quando TRANSCRIBER_PROVIDER=groq');
+    }
+    return createGroqTranscriber(env);
   }
   return createLocalTranscriber(env);
 }
