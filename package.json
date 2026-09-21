@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Bot de Discord que grava calls de voz e gera transcrição com identificação de falante.",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12"
   },
   "scripts": {
     "start": "node src/index.js",

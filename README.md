@@ -38,7 +38,7 @@ TRANSCRIBE_MODEL=whisper-1
 
 ## Requisitos
 
-- Node.js 20+
+- Node.js 22.12+ (`@discordjs/voice`, `openai` e `vitest` exigem essa versão mínima)
 - `npm install`
 - Uma aplicação criada no [Discord Developer Portal](https://discord.com/developers/applications)
 
@@ -78,6 +78,23 @@ foi informado deve falar por ~10 segundos. O script sai sozinho com:
 
 - `SPIKE PASSOU`: gravou um WAV em `data/spike/` com áudio real (não silêncio). Abra o arquivo em qualquer player para confirmar.
 - `SPIKE FALHOU`: pare e reporte o log completo (ele inclui as versões instaladas do discord.js/@discordjs/voice/@snazzah/davey) antes de avançar para a próxima fase.
+
+## Rodando com Docker
+
+```bash
+docker build -t cebolinha .
+docker run -d --name cebolinha --env-file .env -v cebolinha-data:/app/data cebolinha
+```
+
+O build já baixa e cacheia o modelo Whisper padrão (`TRANSCRIBE_MODEL` do
+`.env.example`) na própria imagem — o container não precisa de rede pra
+transcrever, só pra falar com o Discord. Se usar um modelo diferente em
+runtime, ele é baixado sob demanda no primeiro `/finish` (com rede).
+
+Usa a imagem `node:22-slim` (Debian/glibc) de propósito — **não troque para
+`alpine`**: `onnxruntime-node` e `ffmpeg-static` só têm binário pronto pra
+glibc; em Alpine (musl) cairia numa tentativa de compilação nativa sem
+toolchain, do mesmo jeito que aconteceu com `@discordjs/opus` localmente.
 
 ## Testes
 

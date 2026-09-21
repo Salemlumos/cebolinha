@@ -1,0 +1,9 @@
+node_modules/
+data/
+.env
+.git/
+.superpowers/
+*.log
+coverage/
+docs/
+tests/
