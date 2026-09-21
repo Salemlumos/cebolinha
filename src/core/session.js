@@ -6,6 +6,7 @@
  *
  * @typedef {Object} Session
  * @property {string} guildId
+ * @property {string} [id]
  * @property {SessionState} state
  * @property {string} [voiceChannelId]
  * @property {string} [textChannelId]
@@ -58,7 +59,13 @@ function applyEvent(session, event, patch = {}) {
  * @returns {TransitionResult}
  */
 export function start(session, { voiceChannelId, textChannelId, startedBy, startedAt = new Date() }) {
-  return applyEvent(session, 'start', { voiceChannelId, textChannelId, startedBy, startedAt });
+  return applyEvent(session, 'start', {
+    id: `${session.guildId}_${startedAt.getTime()}`,
+    voiceChannelId,
+    textChannelId,
+    startedBy,
+    startedAt,
+  });
 }
 
 /** @param {Session} session @returns {TransitionResult} */
