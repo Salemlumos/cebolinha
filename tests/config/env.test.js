@@ -4,6 +4,7 @@ import { parseEnv } from '../../src/config/env.js';
 const baseValidEnv = {
   DISCORD_TOKEN: 'token-123',
   DISCORD_CLIENT_ID: 'client-123',
+  GROQ_API_KEY: 'gsk-abc',
 };
 
 describe('parseEnv', () => {
@@ -13,7 +14,7 @@ describe('parseEnv', () => {
     expect(result.data).toMatchObject({
       DISCORD_TOKEN: 'token-123',
       DISCORD_CLIENT_ID: 'client-123',
-      TRANSCRIBER_PROVIDER: 'groq',
+      GROQ_API_KEY: 'gsk-abc',
       TRANSCRIBE_MODEL: 'whisper-large-v3-turbo',
       TRANSCRIBE_LANGUAGE: 'pt',
       SILENCE_MS: 1000,
@@ -27,16 +28,17 @@ describe('parseEnv', () => {
   });
 
   it('rejeita quando falta DISCORD_TOKEN', () => {
-    const result = parseEnv({ DISCORD_CLIENT_ID: 'client-123' });
+    const result = parseEnv({ DISCORD_CLIENT_ID: 'client-123', GROQ_API_KEY: 'gsk-abc' });
     expect(result.success).toBe(false);
     const paths = result.error.issues.map((issue) => issue.path.join('.'));
     expect(paths).toContain('DISCORD_TOKEN');
   });
 
-  it('aceita ausência de OPENAI_API_KEY (só é exigida ao instanciar o adaptador OpenAI)', () => {
-    const result = parseEnv(baseValidEnv);
-    expect(result.success).toBe(true);
-    expect(result.data.OPENAI_API_KEY).toBeUndefined();
+  it('rejeita quando falta GROQ_API_KEY', () => {
+    const result = parseEnv({ DISCORD_TOKEN: 'token-123', DISCORD_CLIENT_ID: 'client-123' });
+    expect(result.success).toBe(false);
+    const paths = result.error.issues.map((issue) => issue.path.join('.'));
+    expect(paths).toContain('GROQ_API_KEY');
   });
 
   it('converte KEEP_AUDIO="true" em booleano true', () => {

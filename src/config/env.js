@@ -5,9 +5,7 @@ import { z } from 'zod';
  * @property {string} DISCORD_TOKEN
  * @property {string} DISCORD_CLIENT_ID
  * @property {string} [DISCORD_GUILD_ID]
- * @property {'groq'|'local'|'openai'} TRANSCRIBER_PROVIDER
- * @property {string} [OPENAI_API_KEY]
- * @property {string} [GROQ_API_KEY]
+ * @property {string} GROQ_API_KEY
  * @property {string} TRANSCRIBE_MODEL
  * @property {string} TRANSCRIBE_LANGUAGE
  * @property {number} SILENCE_MS
@@ -27,21 +25,9 @@ const envSchema = z
       .string()
       .optional()
       .transform((value) => value || undefined),
-    // "groq": grátis, roda no serviço da Groq (não consome CPU do servidor
-    // do bot). "local": grátis, roda na própria máquina (offline, mais
-    // lento). "openai": pago.
-    TRANSCRIBER_PROVIDER: z.enum(['groq', 'local', 'openai']).default('groq'),
-    OPENAI_API_KEY: z
-      .string()
-      .optional()
-      .transform((value) => value || undefined),
-    GROQ_API_KEY: z
-      .string()
-      .optional()
-      .transform((value) => value || undefined),
-    // Default é o modelo do adaptador Groq. Ao trocar TRANSCRIBER_PROVIDER,
-    // ajuste também: "local" usa nomes como "Xenova/whisper-base", "openai"
-    // usa "whisper-1".
+    // Único provedor de transcrição: Groq (grátis, roda fora do servidor
+    // do bot). Crie uma chave grátis em https://console.groq.com/keys
+    GROQ_API_KEY: z.string().min(1, 'GROQ_API_KEY é obrigatório (crie uma chave grátis em https://console.groq.com/keys)'),
     TRANSCRIBE_MODEL: z.string().min(1).default('whisper-large-v3-turbo'),
     TRANSCRIBE_LANGUAGE: z.string().min(1).default('pt'),
     SILENCE_MS: z.coerce.number().int().positive().default(1000),
@@ -56,8 +42,6 @@ const envSchema = z
     DATA_DIR: z.string().min(1).default('./data'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   });
-// OPENAI_API_KEY não é exigido aqui: Fases 0/1 não transcrevem nada. O
-// adaptador OpenAI (Fase 2) valida a própria chave ao ser instanciado.
 
 /**
  * Valida variáveis de ambiente brutas sem efeitos colaterais.
