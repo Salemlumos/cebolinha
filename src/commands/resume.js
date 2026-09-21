@@ -7,9 +7,12 @@ export const data = new SlashCommandBuilder()
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {{ sessionManager: import('../core/session-manager.js').ReturnType }} ctx
+ * @param {{
+ *   sessionManager: ReturnType<typeof import('../core/session-manager.js').createSessionManager>,
+ *   recorderRegistry: ReturnType<typeof import('../core/recorder-registry.js').createRecorderRegistry>,
+ * }} ctx
  */
-export async function execute(interaction, { sessionManager }) {
+export async function execute(interaction, { sessionManager, recorderRegistry }) {
   const guildId = interaction.guildId;
   const result = session.resume(sessionManager.get(guildId));
 
@@ -22,5 +25,6 @@ export async function execute(interaction, { sessionManager }) {
   }
 
   sessionManager.set(guildId, result.session);
+  recorderRegistry.get(guildId)?.resume();
   await interaction.reply('▶️ Gravação retomada.');
 }

@@ -4,11 +4,13 @@ import { getVoiceConnections } from '@discordjs/voice';
 import { loadEnv } from './config/env.js';
 import { createLogger } from './utils/logger.js';
 import { createSessionManager } from './core/session-manager.js';
+import { createRecorderRegistry } from './core/recorder-registry.js';
 import { commands } from './commands/index.js';
 
 const env = loadEnv();
 const logger = createLogger({ level: env.LOG_LEVEL });
 const sessionManager = createSessionManager();
+const recorderRegistry = createRecorderRegistry();
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
@@ -30,7 +32,7 @@ client.on('interactionCreate', async (interaction) => {
 
   const commandLogger = logger.child({ guildId: interaction.guildId, command: interaction.commandName });
   try {
-    await command.execute(interaction, { sessionManager, logger: commandLogger });
+    await command.execute(interaction, { sessionManager, recorderRegistry, env, logger: commandLogger });
   } catch (err) {
     commandLogger.error({ err: err.message }, 'Erro não tratado ao executar comando');
     const content = 'Ocorreu um erro inesperado ao executar este comando.';
