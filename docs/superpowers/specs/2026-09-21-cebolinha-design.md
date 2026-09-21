@@ -25,9 +25,12 @@ web, banco de dados, escala multi-instância.
   `prism-media`. Esse padrão ainda é o atual (verificado no repo
   `discordjs/voice` em 2026-09-21).
 - Versões fixadas nesta data (registry npm): `discord.js@14.27.0`,
-  `@discordjs/voice@0.19.2`, `@snazzah/davey@0.1.12`, `@discordjs/opus@0.10.0`,
-  `prism-media@1.3.5`, `ffmpeg-static@5.3.0`, `zod@4.6.5`, `pino@10.3.1`,
-  `vitest@5.0.1`, `openai@7.20.0`.
+  `@discordjs/voice@0.19.2`, `@snazzah/davey@0.1.12`, `prism-media@1.3.5`,
+  `ffmpeg-static@5.3.0`, `zod@4.6.5`, `pino@10.3.1`, `vitest@5.0.1`,
+  `openai@7.20.0`. `@discordjs/opus@0.10.0` não tem prebuild para Node 24 e a
+  máquina de desenvolvimento não tem Python/toolchain para compilar via
+  node-gyp; usamos `opusscript@0.0.8` (fallback puro-JS já previsto na
+  tarefa original) no lugar dele.
 
 ## 3. Decisões de projeto
 
