@@ -6,8 +6,35 @@ grupo).
 
 ## Status
 
-Fase 0 (spike técnico) em andamento. Veja `docs/superpowers/specs/` para o
+Fases 0, 1 e 2 implementadas: spike de gravação, comandos de sessão e
+gravação/transcrição por falante. Veja `docs/superpowers/specs/` para o
 desenho completo e `docs/superpowers/plans/` para o plano de implementação.
+
+## Comandos
+
+| Comando | O que faz |
+|---|---|
+| `/start` | Entra no canal de voz de quem chamou e começa a gravar (avisa no canal de texto). |
+| `/pause` / `/resume` | Pausa/retoma a captura sem sair do canal. |
+| `/status` | Mostra estado, duração, quantidade de segmentos e quem já falou. |
+| `/finish` | Encerra, transcreve tudo e posta o `.md` no canal. Apaga os áudios depois, exceto se `KEEP_AUDIO=true`. |
+| `/cancel` | Descarta a sessão e apaga os áudios, sem transcrever. |
+| `/mute-all` / `/unmute-all` | Muta/desmuta todo mundo no canal de voz do bot (exceto o bot). Requer permissão "Mute Members". |
+
+## Transcrição — grátis por padrão, sem chave de API
+
+Por padrão (`TRANSCRIBER_PROVIDER=local`), a transcrição roda **na própria
+máquina** via Whisper (`@huggingface/transformers`, modelo
+`Xenova/whisper-base`), sem custo e sem precisar de nenhuma chave de API. O
+modelo é baixado uma vez (alguns MB) e cacheado; depois disso, roda offline.
+
+Se preferir usar a API paga da OpenAI (mais rápida, geralmente mais precisa),
+troque no `.env`:
+```
+TRANSCRIBER_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+TRANSCRIBE_MODEL=whisper-1
+```
 
 ## Requisitos
 
@@ -60,6 +87,7 @@ npm test
 
 ## Consentimento e privacidade
 
-Este bot grava voz de pessoas reais. Ao usar `/start` (Fase 1), o bot deve
-avisar explicitamente no canal de texto que a gravação começou — nunca grave
-sem esse aviso.
+Este bot grava voz de pessoas reais. `/start` sempre avisa explicitamente no
+canal de texto que a gravação começou — nunca grave sem esse aviso. Os
+áudios brutos são apagados automaticamente após `/finish` ou `/cancel`,
+exceto se `KEEP_AUDIO=true` no `.env`.
