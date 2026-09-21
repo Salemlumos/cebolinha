@@ -15,10 +15,10 @@
  * completo (versões instaladas, estado da conexão, contagem de pacotes
  * Opus recebidos). Não avance para a Fase 1 sem ver "SPIKE PASSOU" aqui.
  */
-import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { joinVoiceChannel, VoiceConnectionStatus, EndBehaviorType, entersState } from '@discordjs/voice';
 import prism from 'prism-media';
@@ -26,14 +26,15 @@ import ffmpegPath from 'ffmpeg-static';
 import { loadEnv } from '../src/config/env.js';
 import { createLogger } from '../src/utils/logger.js';
 
-const require = createRequire(import.meta.url);
+const scriptDir = dirname(fileURLToPath(import.meta.url));
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MIN_PEAK_AMPLITUDE = 500; // de 32767 (int16) — abaixo disso tratamos como silêncio
 
 function getPackageVersion(pkgName) {
   try {
-    return require(`${pkgName}/package.json`).version;
+    const pkgJsonPath = join(scriptDir, '..', 'node_modules', pkgName, 'package.json');
+    return JSON.parse(readFileSync(pkgJsonPath, 'utf8')).version;
   } catch {
     return 'desconhecida';
   }
