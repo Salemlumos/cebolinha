@@ -13,8 +13,8 @@ describe('parseEnv', () => {
     expect(result.data).toMatchObject({
       DISCORD_TOKEN: 'token-123',
       DISCORD_CLIENT_ID: 'client-123',
-      TRANSCRIBER_PROVIDER: 'openai',
-      TRANSCRIBE_MODEL: 'whisper-1',
+      TRANSCRIBER_PROVIDER: 'local',
+      TRANSCRIBE_MODEL: 'Xenova/whisper-base',
       TRANSCRIBE_LANGUAGE: 'pt',
       SILENCE_MS: 1000,
       MIN_SEGMENT_MS: 400,

@@ -5,7 +5,7 @@ import { z } from 'zod';
  * @property {string} DISCORD_TOKEN
  * @property {string} DISCORD_CLIENT_ID
  * @property {string} [DISCORD_GUILD_ID]
- * @property {'openai'} TRANSCRIBER_PROVIDER
+ * @property {'local'|'openai'} TRANSCRIBER_PROVIDER
  * @property {string} [OPENAI_API_KEY]
  * @property {string} TRANSCRIBE_MODEL
  * @property {string} TRANSCRIBE_LANGUAGE
@@ -26,12 +26,14 @@ const envSchema = z
       .string()
       .optional()
       .transform((value) => value || undefined),
-    TRANSCRIBER_PROVIDER: z.enum(['openai']).default('openai'),
+    TRANSCRIBER_PROVIDER: z.enum(['local', 'openai']).default('local'),
     OPENAI_API_KEY: z
       .string()
       .optional()
       .transform((value) => value || undefined),
-    TRANSCRIBE_MODEL: z.string().min(1).default('whisper-1'),
+    // Default é o modelo do adaptador local (grátis, roda na máquina). Ao
+    // usar TRANSCRIBER_PROVIDER=openai, troque para algo como "whisper-1".
+    TRANSCRIBE_MODEL: z.string().min(1).default('Xenova/whisper-base'),
     TRANSCRIBE_LANGUAGE: z.string().min(1).default('pt'),
     SILENCE_MS: z.coerce.number().int().positive().default(1000),
     MIN_SEGMENT_MS: z.coerce.number().int().positive().default(400),
