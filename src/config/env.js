@@ -56,13 +56,19 @@ export function parseEnv(raw) {
 }
 
 /**
- * Carrega e valida a configuração do processo atual. Encerra o processo com
- * mensagem clara se a configuração for inválida — chame apenas no bootstrap
- * (index.js / scripts), nunca em código testável.
+ * Carrega e valida a configuração do processo atual. Lê `.env` (via a API
+ * nativa do Node, sem dependência extra) antes de validar, e encerra o
+ * processo com mensagem clara se a configuração for inválida — chame apenas
+ * no bootstrap (index.js / scripts), nunca em código testável.
  * @param {Record<string, string|undefined>} [raw]
  * @returns {Env}
  */
 export function loadEnv(raw = process.env) {
+  try {
+    process.loadEnvFile();
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+  }
   const result = parseEnv(raw);
   if (!result.success) {
     const details = result.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`);
