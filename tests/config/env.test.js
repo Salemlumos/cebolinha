@@ -4,7 +4,6 @@ import { parseEnv } from '../../src/config/env.js';
 const baseValidEnv = {
   DISCORD_TOKEN: 'token-123',
   DISCORD_CLIENT_ID: 'client-123',
-  OPENAI_API_KEY: 'sk-abc',
 };
 
 describe('parseEnv', () => {
@@ -34,13 +33,10 @@ describe('parseEnv', () => {
     expect(paths).toContain('DISCORD_TOKEN');
   });
 
-  it('rejeita quando TRANSCRIBER_PROVIDER=openai e OPENAI_API_KEY está ausente', () => {
-    const { OPENAI_API_KEY, ...withoutKey } = baseValidEnv;
-    void OPENAI_API_KEY;
-    const result = parseEnv(withoutKey);
-    expect(result.success).toBe(false);
-    const paths = result.error.issues.map((issue) => issue.path.join('.'));
-    expect(paths).toContain('OPENAI_API_KEY');
+  it('aceita ausência de OPENAI_API_KEY (só é exigida ao instanciar o adaptador OpenAI)', () => {
+    const result = parseEnv(baseValidEnv);
+    expect(result.success).toBe(true);
+    expect(result.data.OPENAI_API_KEY).toBeUndefined();
   });
 
   it('converte KEEP_AUDIO="true" em booleano true', () => {

@@ -38,16 +38,9 @@ const envSchema = z
       .transform((value) => value === 'true'),
     DATA_DIR: z.string().min(1).default('./data'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
-  })
-  .superRefine((data, ctx) => {
-    if (data.TRANSCRIBER_PROVIDER === 'openai' && !data.OPENAI_API_KEY) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['OPENAI_API_KEY'],
-        message: 'OPENAI_API_KEY é obrigatório quando TRANSCRIBER_PROVIDER=openai',
-      });
-    }
   });
+// OPENAI_API_KEY não é exigido aqui: Fases 0/1 não transcrevem nada. O
+// adaptador OpenAI (Fase 2) valida a própria chave ao ser instanciado.
 
 /**
  * Valida variáveis de ambiente brutas sem efeitos colaterais.
