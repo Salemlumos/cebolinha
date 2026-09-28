@@ -15,6 +15,8 @@ import { z } from 'zod';
  * @property {boolean} KEEP_AUDIO
  * @property {string} DATA_DIR
  * @property {'fatal'|'error'|'warn'|'info'|'debug'|'trace'} LOG_LEVEL
+ * @property {number} EMPTY_CHANNEL_TIMEOUT_MS
+ * @property {'finish'|'cancel'} EMPTY_CHANNEL_POLICY
  */
 
 const envSchema = z
@@ -41,6 +43,10 @@ const envSchema = z
       .transform((value) => value === 'true'),
     DATA_DIR: z.string().min(1).default('./data'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+    // Fail-safe: desconecta o bot se ficar sozinho num canal por esse
+    // tempo. EMPTY_CHANNEL_POLICY decide o que fazer com gravação ativa.
+    EMPTY_CHANNEL_TIMEOUT_MS: z.coerce.number().int().positive().default(300_000),
+    EMPTY_CHANNEL_POLICY: z.enum(['finish', 'cancel']).default('finish'),
   });
 
 /**

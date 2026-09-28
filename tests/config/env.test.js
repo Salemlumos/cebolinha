@@ -24,6 +24,8 @@ describe('parseEnv', () => {
       KEEP_AUDIO: false,
       DATA_DIR: './data',
       LOG_LEVEL: 'info',
+      EMPTY_CHANNEL_TIMEOUT_MS: 300_000,
+      EMPTY_CHANNEL_POLICY: 'finish',
     });
   });
 
