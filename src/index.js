@@ -8,6 +8,7 @@ import { createRecorderRegistry } from './core/recorder-registry.js';
 import { createNicknameStore } from './core/nickname-store.js';
 import { finishSession, cancelSession } from './core/session-lifecycle.js';
 import { commands } from './commands/index.js';
+import { registerCommands } from './register-commands.js';
 import { cebolinhaSpeak as c } from './utils/cebolinha-speak.js';
 
 const env = loadEnv();
@@ -20,8 +21,13 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
 });
 
-client.once('ready', () => {
+client.once('ready', async () => {
   logger.info({ user: client.user.tag }, 'Bot pronto');
+  try {
+    await registerCommands(env, logger);
+  } catch (err) {
+    logger.error({ err: err.message }, 'Falha ao registrar comandos automaticamente no boot');
+  }
 });
 
 client.on('interactionCreate', async (interaction) => {
