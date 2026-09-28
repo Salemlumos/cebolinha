@@ -1,28 +1,70 @@
 # Cebolinha
 
-Bot de Discord que grava calls de voz e gera transcrição com identificação de
-quem falou. Uso pensado para servidores pequenos (reuniões, conversas em
-grupo).
+<!-- Troque <seu-usuario> pelo dono real do repo no GitHub depois de publicar. -->
+[![CI](https://github.com/<seu-usuario>/cebolinha/actions/workflows/ci.yml/badge.svg)](https://github.com/<seu-usuario>/cebolinha/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.12-brightgreen)](package.json)
+
+Bot de Discord open source pra gerenciar chamadas de voz de um servidor:
+conectar/mover/desconectar/silenciar usuários, e gravar reuniões com
+transcrição automática e identificação de quem falou. Pensado pra
+servidores pequenos (equipes, grupos de reunião).
 
 ## Status
 
-Fases 0, 1 e 2 implementadas: spike de gravação, comandos de sessão e
-gravação/transcrição por falante. Veja `docs/superpowers/specs/` para o
-desenho completo e `docs/superpowers/plans/` para o plano de implementação.
+Fases 0-2 do design original implementadas, mais a v2 de gerenciamento de
+chamadas (conexão desacoplada da gravação, comandos globais de
+canal/usuário, fail-safe de inatividade). Veja `docs/superpowers/specs/`
+para o histórico completo de decisões de design e `docs/superpowers/plans/`
+para os planos de implementação.
 
 ## Comandos
 
-Todos os comandos começam com `c-` (fácil de listar digitando `/c-` no
-Discord):
+Todos os comandos começam com `c-` (digite `/c-` no Discord pra listar
+todos) e são restritos a **administradores do servidor** por padrão
+(ajustável em Configurações do Servidor > Integrações > Cebolinha, se
+quiser liberar algum pra outro papel).
+
+### Gravação (exige o bot já conectado via `/c-join`)
 
 | Comando | O que faz |
 |---|---|
-| `/c-start` | Entra no canal de voz de quem chamou e começa a gravar (avisa no canal de texto). |
-| `/c-pause` / `/c-resume` | Pausa/retoma a captura sem sair do canal. |
-| `/c-status` | Mostra estado, duração, quantidade de segmentos e quem já falou. |
-| `/c-finish` | Encerra, transcreve tudo e posta o `.md` no canal. Apaga os áudios depois, exceto se `KEEP_AUDIO=true`. |
+| `/c-start` | Começa a gravar no canal onde o bot já está. Se a gravação estiver pausada, retoma em vez de começar de novo. |
+| `/c-pause` | Pausa a captura, mantendo a sessão. |
+| `/c-finish` | Encerra, transcreve tudo (via Groq) e posta o `.md` no canal. Apaga os áudios depois, exceto se `KEEP_AUDIO=true`. |
 | `/c-cancel` | Descarta a sessão e apaga os áudios, sem transcrever. |
-| `/c-mute-all` / `/c-unmute-all` | Muta/desmuta todo mundo no canal de voz do bot (exceto o bot). Requer permissão "Mute Members". |
+| `/c-status` | Mostra estado, duração, quantidade de segmentos e quem já falou. |
+
+### Conexão do bot
+
+| Comando | O que faz |
+|---|---|
+| `/c-join <canal>` | Conecta o bot ao canal informado, sem começar a gravar. |
+| `/c-leave` | Desconecta o bot. Bloqueado se houver gravação ativa (finalize ou cancele antes). |
+
+### Gerenciamento global (não exige o bot conectado)
+
+| Comando | O que faz |
+|---|---|
+| `/c-call <usuário> <canal>` | Move um usuário para o canal informado. |
+| `/c-disconnect <usuário>` | Expulsa um usuário da chamada em que estiver. |
+| `/c-pull-all <canal_origem>` | Move todos de `canal_origem` para o canal de voz em que **você** está. |
+| `/c-move-all <canal_origem> <canal_destino>` | Move todos de um canal para outro, ambos explícitos. |
+| `/c-mute <usuário>` / `/c-unmute <usuário>` | Silencia/dessilencia um usuário específico, em qualquer canal. |
+| `/c-mute-all <canal>` / `/c-unmute-all <canal>` | Silencia/dessilencia todo mundo em `canal`, incluindo o host. |
+| `/c-nickname <usuário> <apelido>` | Define um alias **interno do bot** (não é o nickname real do Discord) usado na transcrição e no `/c-status`. |
+
+Comandos de movimentação/mute exigem que o **bot** tenha as permissões
+`Move Members` / `Mute Members` no servidor.
+
+### Fail-safe: desconexão automática por inatividade
+
+Se o bot ficar sozinho num canal (todo mundo saiu), inicia um timer
+(`EMPTY_CHANNEL_TIMEOUT_MS`, padrão 5 minutos). Se alguém entrar antes, o
+timer é cancelado. Se expirar com uma gravação ativa, aplica
+`EMPTY_CHANNEL_POLICY` (`finish` por padrão — finaliza e posta a
+transcrição; ou `cancel` — descarta) antes de desconectar, e avisa no
+canal de texto da sessão.
 
 ## Transcrição — grátis, roda fora do seu servidor
 
@@ -38,7 +80,6 @@ CPU/RAM do servidor onde o bot roda**. É o único provedor suportado. Passos:
 ## Requisitos
 
 - Node.js 22.12+ (`@discordjs/voice` e `vitest` exigem essa versão mínima)
-- `npm install`
 - Uma aplicação criada no [Discord Developer Portal](https://discord.com/developers/applications)
 - Uma chave grátis da Groq (veja acima)
 
@@ -52,15 +93,35 @@ node scripts/register-commands.js
 node src/index.js
 ```
 
+## Variáveis de ambiente
+
+Veja `.env.example` para a lista completa com comentários. As obrigatórias
+são `DISCORD_TOKEN`, `DISCORD_CLIENT_ID` e `GROQ_API_KEY` — todo o resto
+tem um default razoável.
+
+| Variável | Default | Descrição |
+|---|---|---|
+| `DISCORD_GUILD_ID` | — (registro global) | Se definida, registra os comandos só nesse servidor (rápido, ideal em dev). |
+| `TRANSCRIBE_MODEL` | `whisper-large-v3-turbo` | Modelo Groq a usar. |
+| `TRANSCRIBE_LANGUAGE` | `pt` | Idioma passado ao transcritor. |
+| `SILENCE_MS` | `1000` | Silêncio necessário pra considerar uma fala encerrada. |
+| `MIN_SEGMENT_MS` | `400` | Segmentos mais curtos que isso são descartados. |
+| `TRANSCRIBE_CONCURRENCY` | `3` | Quantos segmentos transcrever em paralelo. |
+| `KEEP_AUDIO` | `false` | Se `true`, não apaga os WAVs depois do `/c-finish`. |
+| `DATA_DIR` | `./data` | Onde os áudios ficam durante a sessão. |
+| `EMPTY_CHANNEL_TIMEOUT_MS` | `300000` (5 min) | Tempo sozinho no canal antes do fail-safe agir. |
+| `EMPTY_CHANNEL_POLICY` | `finish` | `finish` ou `cancel` — o que fazer com gravação ativa no fail-safe. |
+| `LOG_LEVEL` | `info` | Nível de log (pino). |
+
 ## Configurar a aplicação no Discord Developer Portal
 
 1. Acesse https://discord.com/developers/applications e crie (ou reuse) uma aplicação.
 2. Em **Bot**, copie o token para `DISCORD_TOKEN` no `.env`, e o **Application ID** (na aba **General Information**) para `DISCORD_CLIENT_ID`.
-3. Em **Bot**, habilite os intents privilegiados necessários: o código usa os intents `Guilds` e `GuildVoiceStates`.
-4. Em **OAuth2 > URL Generator**, marque os scopes `bot` e `applications.commands`, e as permissões `Connect`, `Mute Members`, `Send Messages`, `Attach Files`.
-5. Copie a URL gerada e use-a para convidar o bot ao seu servidor de teste.
+3. Em **Bot**, os intents usados (`Guilds`, `GuildVoiceStates`) não são privilegiados — nada extra pra habilitar.
+4. Em **OAuth2 > URL Generator**, marque os scopes `bot` e `applications.commands`, e as permissões `Connect`, `Move Members`, `Mute Members`, `Send Messages`, `Attach Files`.
+5. Copie a URL gerada e use-a para convidar o bot ao seu servidor.
 
-## Rodando o spike da Fase 0 (opcional, só pra validar áudio/DAVE)
+## Rodando o spike de gravação (opcional, só pra validar áudio/DAVE)
 
 ```bash
 node scripts/spike-record.js <ID_DO_CANAL_DE_VOZ> <ID_DO_USUARIO_ALVO>
@@ -84,15 +145,28 @@ Usa a imagem `node:22-slim` (Debian/glibc) de propósito — **não troque para
 jeito que aconteceu com `@discordjs/opus` localmente (por isso usamos
 `opusscript` no lugar dele).
 
-## Testes
+## Testes e lint
 
 ```bash
 npm test
+npm run lint
 ```
+
+CI (`.github/workflows/ci.yml`) roda os dois, mais um build Docker de
+validação, em todo push/PR pra `main`.
+
+## Contribuindo
+
+Veja [`CONTRIBUTING.md`](CONTRIBUTING.md) para o fluxo de setup, o que
+testar antes de abrir um PR, e a estrutura do projeto.
+
+## Licença
+
+[MIT](LICENSE).
 
 ## Consentimento e privacidade
 
 Este bot grava voz de pessoas reais. `/c-start` sempre avisa explicitamente
 no canal de texto que a gravação começou — nunca grave sem esse aviso. Os
-áudios brutos são apagados automaticamente após `/c-finish` ou `/c-cancel`,
-exceto se `KEEP_AUDIO=true` no `.env`.
+áudios brutos são apagados automaticamente após `/c-finish` ou `/c-cancel`
+(ou pelo fail-safe de inatividade), exceto se `KEEP_AUDIO=true` no `.env`.
