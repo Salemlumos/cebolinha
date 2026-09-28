@@ -1,10 +1,11 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import * as session from '../core/session.js';
 import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 export const data = new SlashCommandBuilder()
   .setName('c-pause')
-  .setDescription(c('Pausa a captura de áudio da gravação atual.'));
+  .setDescription(c('Pausa a captura de áudio da gravação atual.'))
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
@@ -27,5 +28,5 @@ export async function execute(interaction, { sessionManager, recorderRegistry })
 
   sessionManager.set(guildId, result.session);
   recorderRegistry.get(guildId)?.pause();
-  await interaction.reply(c('⏸️ Gravação pausada. Novas falas não serão capturadas até o') + ' `/c-resume`.');
+  await interaction.reply(`${c('⏸️ Gravação pausada. Novas falas não serão capturadas até o')} \`/c-start\`.`);
 }

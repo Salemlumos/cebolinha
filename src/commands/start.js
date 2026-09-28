@@ -1,14 +1,17 @@
-import { SlashCommandBuilder } from 'discord.js';
-import { joinVoiceChannel, VoiceConnectionStatus, entersState } from '@discordjs/voice';
+import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { getVoiceConnection } from '@discordjs/voice';
 import * as session from '../core/session.js';
 import { createRecorder } from '../core/recorder.js';
 import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 export const data = new SlashCommandBuilder()
   .setName('c-start')
-  .setDescription(c('Inicia a gravação da call de voz atual (avisa todos no canal).'));
+  .setDescription(c('Inicia a gravação (ou retoma, se estiver pausada) no canal onde o bot já está.'))
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
-async function resolveDisplayName(guild, userId) {
+async function resolveDisplayName(guild, nicknameStore, userId) {
+  const alias = nicknameStore.get(guild.id, userId);
+  if (alias) return alias;
   const cached = guild.members.cache.get(userId);
   if (cached) return cached.displayName;
   try {
@@ -24,24 +27,34 @@ async function resolveDisplayName(guild, userId) {
  * @param {{
  *   sessionManager: ReturnType<typeof import('../core/session-manager.js').createSessionManager>,
  *   recorderRegistry: ReturnType<typeof import('../core/recorder-registry.js').createRecorderRegistry>,
+ *   nicknameStore: ReturnType<typeof import('../core/nickname-store.js').createNicknameStore>,
  *   env: import('../config/env.js').Env,
  *   logger: import('pino').Logger,
  * }} ctx
  */
-export async function execute(interaction, { sessionManager, recorderRegistry, env, logger }) {
-  const voiceChannel = interaction.member?.voice?.channel;
-  if (!voiceChannel) {
+export async function execute(interaction, { sessionManager, recorderRegistry, nicknameStore, env, logger }) {
+  const guildId = interaction.guildId;
+  const connection = getVoiceConnection(guildId);
+  if (!connection) {
     await interaction.reply({
-      content: `${c('Você precisa estar em um canal de voz para usar')} \`/c-start\`.`,
+      content: `${c('O bot precisa estar conectado a um canal de voz. Use')} \`/c-join\` ${c('primeiro.')}`,
       ephemeral: true,
     });
     return;
   }
 
-  const guildId = interaction.guildId;
   const current = sessionManager.get(guildId);
+
+  if (current.state === 'paused') {
+    const result = session.resume(current);
+    sessionManager.set(guildId, result.session);
+    recorderRegistry.get(guildId)?.resume();
+    await interaction.reply(c('▶️ Gravação retomada.'));
+    return;
+  }
+
   const result = session.start(current, {
-    voiceChannelId: voiceChannel.id,
+    voiceChannelId: connection.joinConfig.channelId,
     textChannelId: interaction.channelId,
     startedBy: interaction.user.id,
   });
@@ -57,29 +70,14 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
   await interaction.deferReply();
   sessionManager.set(guildId, result.session);
 
-  let connection;
-  try {
-    connection = joinVoiceChannel({
-      channelId: voiceChannel.id,
-      guildId,
-      adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-      selfDeaf: false,
-    });
-    await entersState(connection, VoiceConnectionStatus.Ready, 15_000);
-  } catch (err) {
-    logger.error({ err: err.message, guildId }, 'Falha ao entrar no canal de voz em /c-start');
-    sessionManager.remove(guildId);
-    await interaction.editReply(c('Não consegui entrar no canal de voz. Verifique minhas permissões e tente de novo.'));
-    return;
-  }
-
+  const channel = interaction.guild.channels.cache.get(connection.joinConfig.channelId);
   const recorder = createRecorder({
     connection,
     sessionId: result.session.id,
     dataDir: env.DATA_DIR,
     silenceMs: env.SILENCE_MS,
     minSegmentMs: env.MIN_SEGMENT_MS,
-    resolveDisplayName: (userId) => resolveDisplayName(interaction.guild, userId),
+    resolveDisplayName: (userId) => resolveDisplayName(interaction.guild, nicknameStore, userId),
     logger,
     onSegment(segment) {
       const active = sessionManager.get(guildId);
@@ -90,6 +88,6 @@ export async function execute(interaction, { sessionManager, recorderRegistry, e
   recorderRegistry.set(guildId, recorder);
 
   await interaction.editReply(
-    `${c('🔴 **Gravando esta call.** Entrei em')} **${voiceChannel.name}** ${c('— avisem quem ainda não sabia que a conversa está sendo registrada. Use')} \`/c-finish\` ${c('para encerrar e gerar a transcrição, ou')} \`/c-cancel\` ${c('para descartar.')}`,
+    `${c('🔴 Gravando esta call em')} **${channel?.name ?? connection.joinConfig.channelId}**. ${c('Avisem quem ainda não sabia que a conversa está sendo registrada. Use')} \`/c-finish\` ${c('para encerrar e gerar a transcrição, ou')} \`/c-cancel\` ${c('para descartar.')}`,
   );
 }

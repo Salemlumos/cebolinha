@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 const STATE_LABELS = {
@@ -22,7 +22,8 @@ function formatDuration(session) {
 
 export const data = new SlashCommandBuilder()
   .setName('c-status')
-  .setDescription(c('Mostra o estado atual da gravação neste servidor.'));
+  .setDescription(c('Mostra o estado atual da gravação neste servidor.'))
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction

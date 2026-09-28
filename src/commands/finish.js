@@ -1,16 +1,20 @@
-import { rm } from 'node:fs/promises';
-import { join } from 'node:path';
-import { SlashCommandBuilder, AttachmentBuilder } from 'discord.js';
-import { getVoiceConnection } from '@discordjs/voice';
-import * as session from '../core/session.js';
-import { createTranscriber } from '../services/transcriber/index.js';
-import { transcribeSegments } from '../services/transcriber/run-batch.js';
-import { buildTranscript, splitTranscriptParts } from '../services/formatter.js';
+import { SlashCommandBuilder, AttachmentBuilder, PermissionFlagsBits } from 'discord.js';
+import { finishSession } from '../core/session-lifecycle.js';
 import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 export const data = new SlashCommandBuilder()
   .setName('c-finish')
-  .setDescription(c('Encerra a gravação, transcreve tudo e posta o resultado no canal.'));
+  .setDescription(c('Encerra a gravação, transcreve tudo e posta o resultado no canal.'))
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+
+function buildAttachments(parts) {
+  return parts.map(
+    (part, index) =>
+      new AttachmentBuilder(Buffer.from(part, 'utf8'), {
+        name: parts.length > 1 ? `transcricao-parte-${index + 1}.md` : 'transcricao.md',
+      }),
+  );
+}
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
@@ -21,75 +25,26 @@ export const data = new SlashCommandBuilder()
  *   logger: import('pino').Logger,
  * }} ctx
  */
-export async function execute(interaction, { sessionManager, recorderRegistry, env, logger }) {
-  const guildId = interaction.guildId;
-  const before = sessionManager.get(guildId);
-  const result = session.finish(before);
+export async function execute(interaction, ctx) {
+  await interaction.deferReply();
+  const result = await finishSession(interaction.guildId, ctx);
 
-  if (!result.success) {
-    await interaction.reply({
-      content: `${c('Não há gravação ativa para finalizar. Use')} \`/c-status\` ${c('para ver o estado atual.')}`,
-      ephemeral: true,
-    });
+  if (!result.ok) {
+    const message =
+      result.code === 'not-recording'
+        ? `${c('Não há gravação ativa para finalizar. Use')} \`/c-status\` ${c('para ver o estado atual.')}`
+        : c('Encerrei a gravação, mas houve um erro ao transcrever. Os áudios foram mantidos em disco para uma nova tentativa manual.');
+    await interaction.editReply(message);
     return;
   }
 
-  await interaction.deferReply();
-  const finishingSession = result.session;
-  sessionManager.set(guildId, finishingSession);
-
-  const recorder = recorderRegistry.get(guildId);
-  if (recorder) await recorder.stop();
-  recorderRegistry.remove(guildId);
-  getVoiceConnection(guildId)?.destroy();
-
-  if (finishingSession.segments.length === 0) {
-    sessionManager.remove(guildId);
+  if (result.emptyMessage) {
     await interaction.editReply(c('Gravação encerrada, mas nenhuma fala foi capturada — nada para transcrever.'));
     return;
   }
 
-  let transcript;
-  try {
-    const transcriber = createTranscriber(env);
-    const transcribed = await transcribeSegments(transcriber, finishingSession.segments, {
-      concurrency: env.TRANSCRIBE_CONCURRENCY,
-      language: env.TRANSCRIBE_LANGUAGE,
-    });
-    const sessionEndedAt = new Date();
-    const participantNames = new Map(transcribed.map((seg) => [seg.userId, seg.displayName]));
-
-    transcript = buildTranscript({
-      segments: transcribed,
-      sessionStartedAt: finishingSession.startedAt,
-      sessionEndedAt,
-      participants: [...finishingSession.speakerIds].map((id) => participantNames.get(id) ?? id),
-    });
-  } catch (err) {
-    logger.error({ err: err.message, guildId }, 'Falha ao transcrever sessão em /c-finish');
-    sessionManager.set(guildId, session.complete(finishingSession).session);
-    await interaction.editReply(
-      c('Encerrei a gravação, mas houve um erro ao transcrever. Os áudios foram mantidos em disco para uma nova tentativa manual.'),
-    );
-    return;
-  }
-
-  const parts = splitTranscriptParts(transcript);
-  const files = parts.map(
-    (part, index) =>
-      new AttachmentBuilder(Buffer.from(part, 'utf8'), {
-        name: parts.length > 1 ? `transcricao-parte-${index + 1}.md` : 'transcricao.md',
-      }),
-  );
-
-  sessionManager.set(guildId, session.complete(finishingSession).session);
-  await interaction.editReply({ content: `✅ ${c('Gravação finalizada. Transcrição em anexo.')}`, files });
-
-  if (!env.KEEP_AUDIO) {
-    await rm(join(env.DATA_DIR, 'sessions', finishingSession.id), { recursive: true, force: true }).catch((err) =>
-      logger.error({ err: err.message, guildId }, 'Falha ao apagar áudios após /c-finish'),
-    );
-  }
-
-  sessionManager.remove(guildId);
+  await interaction.editReply({
+    content: `✅ ${c('Gravação finalizada. Transcrição em anexo.')}`,
+    files: buildAttachments(result.parts),
+  });
 }
