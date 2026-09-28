@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "license": "MIT",
   "description": "Bot de Discord que grava calls de voz e gera transcrição com identificação de falante.",
   "engines": {
     "node": ">=22.12"
