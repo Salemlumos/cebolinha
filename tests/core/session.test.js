@@ -66,6 +66,11 @@ describe('session state machine', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejeita cancel quando idle (nada para cancelar)', () => {
+    const result = cancel(createSession('guild-1'));
+    expect(result.success).toBe(false);
+  });
+
   it('rejeita resume quando recording', () => {
     const recording = start(createSession('guild-1'), startParams).session;
     const result = resume(recording);

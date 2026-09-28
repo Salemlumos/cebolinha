@@ -33,7 +33,7 @@ const TRANSITIONS = {
   resume: { from: ['paused'], to: 'recording' },
   finish: { from: ['recording', 'paused'], to: 'finishing' },
   complete: { from: ['finishing'], to: 'done' },
-  cancel: { from: ['idle', 'recording', 'paused'], to: 'cancelled' },
+  cancel: { from: ['recording', 'paused'], to: 'cancelled' },
 };
 
 /**
