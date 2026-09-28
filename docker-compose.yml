@@ -1,0 +1,10 @@
+services:
+  cebolinha:
+    build: .
+    env_file: .env
+    volumes:
+      - cebolinha-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  cebolinha-data:
