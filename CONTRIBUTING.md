@@ -21,8 +21,8 @@ Developer Portal.
 npm test          # testes unitários (vitest)
 npm run lint       # eslint
 npm run format     # prettier --write
-node scripts/register-commands.js   # registra os slash commands (use DISCORD_GUILD_ID no dev)
-node src/index.js                   # roda o bot
+node src/index.js                   # roda o bot (registra os slash commands automaticamente no boot)
+node scripts/register-commands.js   # opcional: força o registro sem esperar o bot logar
 ```
 
 ## Antes de abrir um PR

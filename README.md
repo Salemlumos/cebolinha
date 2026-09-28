@@ -89,9 +89,11 @@ CPU/RAM do servidor onde o bot roda**. É o único provedor suportado. Passos:
 npm install
 cp .env.example .env
 # edite .env com o token/client id da sua aplicação e sua GROQ_API_KEY
-node scripts/register-commands.js
 node src/index.js
 ```
+
+Os slash commands são registrados automaticamente a cada boot (idempotente
+— seguro rodar sempre). Não precisa de um passo manual separado.
 
 ## Variáveis de ambiente
 
@@ -132,11 +134,18 @@ em Configurações do Discord > Avançado, depois clique com o botão direito no
 canal/usuário e escolha "Copiar ID". O script sai sozinho com `SPIKE PASSOU`
 ou `SPIKE FALHOU` (com diagnóstico completo).
 
-## Rodando com Docker
+## Rodando com Docker (recomendado pra deploy)
 
 ```bash
+docker compose up -d --build
+```
+
+Isso já cuida de build, `.env`, volume persistente pros áudios (`data/`) e
+reinício automático (`restart: unless-stopped`). Sem `docker compose`, o
+equivalente manual é:
+```bash
 docker build -t cebolinha .
-docker run -d --name cebolinha --env-file .env -v cebolinha-data:/app/data cebolinha
+docker run -d --name cebolinha --env-file .env -v cebolinha-data:/app/data --restart unless-stopped cebolinha
 ```
 
 Usa a imagem `node:22-slim` (Debian/glibc) de propósito — **não troque para
