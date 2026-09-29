@@ -15,7 +15,7 @@
   \____|_____|____/ \___/|_____|___|_| \_|_| |_/_/   \_\
 ```
 
-[![CI](https://github.com/<seu-usuario>/cebolinha/actions/workflows/ci.yml/badge.svg)](https://github.com/<seu-usuario>/cebolinha/actions/workflows/ci.yml)
+[![CI](https://github.com/Salemlumos/cebolinha/actions/workflows/ci.yml/badge.svg)](https://github.com/Salemlumos/cebolinha/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.12-brightgreen)](package.json)
 
