@@ -1,9 +1,10 @@
 import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { isMuteExempt } from '../core/mute-exempt.js';
 import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 export const data = new SlashCommandBuilder()
   .setName('c-mute-all')
-  .setDescription(c('Aplica mute de servidor em todos de um canal de voz, incluindo o host.'))
+  .setDescription(c('Aplica mute de servidor em todos de um canal de voz (administradores ficam de fora).'))
   .addChannelOption((option) =>
     option
       .setName('canal')
@@ -28,7 +29,9 @@ export async function execute(interaction, { logger }) {
 
   await interaction.deferReply();
 
-  const targets = [...channel.members.values()].filter((member) => member.id !== botMember.id);
+  const allMembers = [...channel.members.values()].filter((member) => member.id !== botMember.id);
+  const exempt = allMembers.filter((member) => isMuteExempt(member));
+  const targets = allMembers.filter((member) => !isMuteExempt(member));
   const failed = [];
   for (const member of targets) {
     try {
@@ -44,6 +47,9 @@ export async function execute(interaction, { logger }) {
 
   const muted = targets.length - failed.length;
   const lines = [`🔇 ${muted} ${c('de')} ${targets.length} ${c('membro(s) mutado(s) em')} **${channel.name}**.`];
+  if (exempt.length > 0) {
+    lines.push(`${c('Protegido(s) por serem administradores')}: ${exempt.map((member) => member.user.tag).join(', ')}.`);
+  }
   if (failed.length > 0) {
     lines.push(`${c('Não consegui mutar')}: ${failed.map((member) => member.user.tag).join(', ')}.`);
   }
