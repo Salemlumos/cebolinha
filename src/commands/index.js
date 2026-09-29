@@ -1,8 +1,4 @@
-import * as start from './start.js';
-import * as pause from './pause.js';
 import * as status from './status.js';
-import * as finish from './finish.js';
-import * as cancel from './cancel.js';
 import * as join from './join.js';
 import * as leave from './leave.js';
 import * as call from './call.js';
@@ -19,26 +15,17 @@ import * as callPanel from './call-panel.js';
 /**
  * Todos os comandos slash disponíveis, indexados pelo nome declarado em
  * `data`. Cada módulo exporta `{ data, execute }`.
+ *
+ * `/c-start`, `/c-pause`, `/c-finish` e `/c-cancel` deixaram de existir
+ * como comandos separados: são 100% redundantes com a linha de controle
+ * de gravação do `/c-call-panel` (mesma lógica, em `session-lifecycle.js`)
+ * — manter os dois só dava dois jeitos de fazer a mesma coisa. `/c-status`
+ * continua existindo por conta própria: mostra duração/segmentos/quem
+ * falou, informação que o painel não exibe.
  * @type {Map<string, { data: import('discord.js').SlashCommandBuilder, execute: Function }>}
  */
 export const commands = new Map(
-  [
-    start,
-    pause,
-    status,
-    finish,
-    cancel,
-    join,
-    leave,
-    call,
-    disconnect,
-    pullAll,
-    moveAll,
-    nickname,
-    mute,
-    unmute,
-    muteAll,
-    unmuteAll,
-    callPanel,
-  ].map((command) => [command.data.name, command]),
+  [status, join, leave, call, disconnect, pullAll, moveAll, nickname, mute, unmute, muteAll, unmuteAll, callPanel].map(
+    (command) => [command.data.name, command],
+  ),
 );

@@ -50,13 +50,14 @@ quiser liberar algum pra outro papel).
 
 ### Gravação (exige o bot já conectado via `/c-join`)
 
+Iniciar, pausar, finalizar e cancelar a gravação **não são mais comandos
+separados** — ficam só no `/c-call-panel` (linha de botões de cima), pra
+não ter dois jeitos de fazer a mesma coisa.
+
 | Comando | O que faz |
 |---|---|
-| `/c-start` | Começa a gravar no canal onde o bot já está. Se a gravação estiver pausada, retoma em vez de começar de novo. |
-| `/c-pause` | Pausa a captura, mantendo a sessão. |
-| `/c-finish` | Encerra, transcreve tudo (via Groq) e posta o `.md` no canal. Apaga os áudios depois, exceto se `KEEP_AUDIO=true`. |
-| `/c-cancel` | Descarta a sessão e apaga os áudios, sem transcrever. |
-| `/c-status` | Mostra estado, duração, quantidade de segmentos e quem já falou. |
+| `/c-call-panel [canal]` | Abre um painel privado: botões 🔴 Iniciar/▶️ Retomar, ⏸️ Pausar, ⏹️ Finalizar, 🗑️ Cancelar, mais um botão por usuário pra mutar/desmutar com um clique (🔊 livre · 🔇 mutado · 🛡️ admin, protegido). Sem `canal`, usa o canal em que você está. Iniciar/pausar/finalizar/cancelar avisam publicamente no canal de texto, mesmo sendo acionados por um painel privado. |
+| `/c-status` | Mostra estado, duração, quantidade de segmentos e quem já falou — informação que o painel não exibe. |
 
 ### Conexão do bot
 
@@ -74,9 +75,8 @@ quiser liberar algum pra outro papel).
 | `/c-pull-all <canal_origem>` | Move todos de `canal_origem` para o canal de voz em que **você** está. |
 | `/c-move-all <canal_origem> <canal_destino>` | Move todos de um canal para outro, ambos explícitos. |
 | `/c-mute <usuário>` / `/c-unmute <usuário>` | Silencia/dessilencia um usuário específico, em qualquer canal. |
-| `/c-mute-all <canal>` / `/c-unmute-all <canal>` | Silencia/dessilencia todo mundo em `canal`. Administradores (quem tem "Gerenciar Servidor") ficam de fora. |
-| `/c-call-panel [canal]` | Abre um painel privado com botões pra Iniciar/Retomar, Pausar e Finalizar a gravação, mais um botão por usuário pra mutar/desmutar com um clique (🔊 livre · 🔇 mutado · 🛡️ admin, protegido). Sem `canal`, usa o canal em que você está. |
-| `/c-nickname <usuário> <apelido>` | Define um alias **interno do bot** (não é o nickname real do Discord) usado na transcrição e no `/c-status`. |
+| `/c-mute-all <canal>` / `/c-unmute-all <canal>` | Silencia/dessilencia todo mundo em `canal`. Quem tem a permissão `Administrator` fica de fora. |
+| `/c-nickname <usuário> <apelido>` | Define um alias **interno do bot** (não é o nickname real do Discord) usado na transcrição e no `/c-status`. Persiste em disco — sobrevive a reinícios do bot. |
 
 Comandos de movimentação/mute exigem que o **bot** tenha as permissões
 `Move Members` / `Mute Members` no servidor.
@@ -134,7 +134,7 @@ tem um default razoável.
 | `MIN_SEGMENT_MS` | `400` | Segmentos mais curtos que isso são descartados. |
 | `TRANSCRIBE_CONCURRENCY` | `3` | Quantos segmentos transcrever em paralelo. |
 | `TRANSCRIBE_RPM_LIMIT` | `18` | Limite de requisições/minuto pro rate limiter da Groq (tier grátis = 20/min; deixamos margem). Suba se estiver num plano pago. |
-| `KEEP_AUDIO` | `false` | Se `true`, não apaga os WAVs depois do `/c-finish`. |
+| `KEEP_AUDIO` | `false` | Se `true`, não apaga os WAVs depois de finalizar a gravação. |
 | `DATA_DIR` | `./data` | Onde os áudios ficam durante a sessão. |
 | `EMPTY_CHANNEL_TIMEOUT_MS` | `300000` (5 min) | Tempo sozinho no canal antes do fail-safe agir. |
 | `EMPTY_CHANNEL_POLICY` | `finish` | `finish` ou `cancel` — o que fazer com gravação ativa no fail-safe. |
@@ -200,9 +200,10 @@ testar antes de abrir um PR, e a estrutura do projeto.
 
 ## Consentimento e privacidade
 
-Este bot grava voz de pessoas reais. `/c-start` sempre avisa explicitamente
-no canal de texto que a gravação começou — nunca grave sem esse aviso. Os
-áudios brutos são apagados automaticamente após `/c-finish` ou `/c-cancel`
+Este bot grava voz de pessoas reais. Iniciar/pausar/finalizar/cancelar pelo
+`/c-call-panel` sempre avisa publicamente no canal de texto — nunca grave
+sem esse aviso. Os áudios brutos são apagados automaticamente ao finalizar
+ou cancelar
 (ou pelo fail-safe de inatividade), exceto se `KEEP_AUDIO=true` no `.env`.
 
 ---
