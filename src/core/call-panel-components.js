@@ -19,13 +19,14 @@ export function buildRecordingControlsRow(sessionState) {
   const isRecording = sessionState === 'recording';
   const isPaused = sessionState === 'paused';
   const isActive = isRecording || isPaused;
+  const canStartOrResume = sessionState === 'idle' || isPaused;
 
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(RECORDING_START_ID)
       .setLabel(isPaused ? '▶️ Retomar' : '🔴 Iniciar')
       .setStyle(ButtonStyle.Success)
-      .setDisabled(isRecording),
+      .setDisabled(!canStartOrResume),
     new ButtonBuilder()
       .setCustomId(RECORDING_PAUSE_ID)
       .setLabel('⏸️ Pausar')

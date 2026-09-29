@@ -13,6 +13,7 @@ import { printBanner } from './utils/banner.js';
 import { isMuteExempt } from './core/mute-exempt.js';
 import {
   buildCallPanelComponents,
+  buildRecordingControlsRow,
   MUTE_TOGGLE_PREFIX,
   RECORDING_START_ID,
   RECORDING_PAUSE_ID,
@@ -156,6 +157,15 @@ async function handlePanelPause(interaction) {
 async function handlePanelFinish(interaction) {
   const guildId = interaction.guildId;
   await interaction.deferUpdate();
+
+  // Transcrever pode levar minutos (rate limit da Groq) — sem isso, o
+  // painel fica com cara de travado até o fim, sem nenhum feedback.
+  const interimComponents = await rebuildPanelComponents(interaction);
+  interimComponents[0] = buildRecordingControlsRow('finishing');
+  await interaction.editReply({
+    content: `⏳ ${c('Finalizando e transcrevendo... isso pode levar alguns minutos dependendo da quantidade de falas.')}`,
+    components: interimComponents,
+  });
 
   const guildLogger = logger.child({ guildId });
   const result = await finishSession(guildId, { sessionManager, recorderRegistry, env, logger: guildLogger });

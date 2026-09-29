@@ -46,6 +46,13 @@ describe('buildRecordingControlsRow', () => {
     expect(findButton(row, RECORDING_PAUSE_ID).disabled).toBe(true);
     expect(findButton(row, RECORDING_FINISH_ID).disabled).toBe(false);
   });
+
+  it('estado finishing: os três botões ficam desabilitados', () => {
+    const row = buildRecordingControlsRow('finishing');
+    expect(findButton(row, RECORDING_START_ID).disabled).toBe(true);
+    expect(findButton(row, RECORDING_PAUSE_ID).disabled).toBe(true);
+    expect(findButton(row, RECORDING_FINISH_ID).disabled).toBe(true);
+  });
 });
 
 describe('buildMuteButtonRows', () => {
