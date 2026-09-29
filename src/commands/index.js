@@ -14,7 +14,7 @@ import * as mute from './mute.js';
 import * as unmute from './unmute.js';
 import * as muteAll from './mute-all.js';
 import * as unmuteAll from './unmute-all.js';
-import * as mutePanel from './mute-panel.js';
+import * as callPanel from './call-panel.js';
 
 /**
  * Todos os comandos slash disponíveis, indexados pelo nome declarado em
@@ -39,6 +39,6 @@ export const commands = new Map(
     unmute,
     muteAll,
     unmuteAll,
-    mutePanel,
+    callPanel,
   ].map((command) => [command.data.name, command]),
 );

@@ -1,10 +1,10 @@
 import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
-import { buildMutePanelComponents } from '../core/mute-panel-components.js';
+import { buildCallPanelComponents } from '../core/call-panel-components.js';
 import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('c-mute-panel')
-  .setDescription(c('Abre um painel com botões para mutar/desmutar cada usuário do canal com um clique.'))
+  .setName('c-call-panel')
+  .setDescription(c('Abre um painel para controlar a gravação e mutar/desmutar cada usuário com um clique.'))
   .addChannelOption((option) =>
     option
       .setName('canal')
@@ -16,8 +16,9 @@ export const data = new SlashCommandBuilder()
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * @param {{ sessionManager: ReturnType<typeof import('../core/session-manager.js').createSessionManager> }} ctx
  */
-export async function execute(interaction) {
+export async function execute(interaction, { sessionManager }) {
   const channel = interaction.options.getChannel('canal') ?? interaction.member?.voice?.channel;
 
   if (!channel) {
@@ -29,14 +30,11 @@ export async function execute(interaction) {
   }
 
   const members = [...channel.members.values()].filter((member) => member.id !== interaction.client.user.id);
-  if (members.length === 0) {
-    await interaction.reply({ content: `${c('Não há ninguém em')} **${channel.name}**.`, ephemeral: true });
-    return;
-  }
+  const sessionState = sessionManager.get(interaction.guildId).state;
 
   await interaction.reply({
-    content: `🎛️ ${c('Painel de mute de')} **${channel.name}**. ${c('🔊 = livre (clique para mutar) · 🔇 = mutado (clique para desmutar) · 🛡️ = administrador, protegido.')}`,
-    components: buildMutePanelComponents(members),
+    content: `🎛️ ${c('Painel de')} **${channel.name}**. ${c('🔊 livre · 🔇 mutado · 🛡️ administrador (protegido). A linha de cima controla a gravação.')}`,
+    components: buildCallPanelComponents({ sessionState, members }),
     ephemeral: true,
   });
 }

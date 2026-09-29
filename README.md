@@ -75,7 +75,7 @@ quiser liberar algum pra outro papel).
 | `/c-move-all <canal_origem> <canal_destino>` | Move todos de um canal para outro, ambos explícitos. |
 | `/c-mute <usuário>` / `/c-unmute <usuário>` | Silencia/dessilencia um usuário específico, em qualquer canal. |
 | `/c-mute-all <canal>` / `/c-unmute-all <canal>` | Silencia/dessilencia todo mundo em `canal`. Administradores (quem tem "Gerenciar Servidor") ficam de fora. |
-| `/c-mute-panel [canal]` | Abre um painel privado com um botão por usuário pra mutar/desmutar com um clique (🔊 livre · 🔇 mutado · 🛡️ admin, protegido). Sem `canal`, usa o canal em que você está. |
+| `/c-call-panel [canal]` | Abre um painel privado com botões pra Iniciar/Retomar, Pausar e Finalizar a gravação, mais um botão por usuário pra mutar/desmutar com um clique (🔊 livre · 🔇 mutado · 🛡️ admin, protegido). Sem `canal`, usa o canal em que você está. |
 | `/c-nickname <usuário> <apelido>` | Define um alias **interno do bot** (não é o nickname real do Discord) usado na transcrição e no `/c-status`. |
 
 Comandos de movimentação/mute exigem que o **bot** tenha as permissões

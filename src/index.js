@@ -6,12 +6,18 @@ import { createLogger } from './utils/logger.js';
 import { createSessionManager } from './core/session-manager.js';
 import { createRecorderRegistry } from './core/recorder-registry.js';
 import { createNicknameStore } from './core/nickname-store.js';
-import { finishSession, cancelSession } from './core/session-lifecycle.js';
+import { finishSession, cancelSession, startOrResumeSession, pauseSession } from './core/session-lifecycle.js';
 import { commands } from './commands/index.js';
 import { registerCommands } from './register-commands.js';
 import { printBanner } from './utils/banner.js';
 import { isMuteExempt } from './core/mute-exempt.js';
-import { buildMutePanelComponents, MUTE_TOGGLE_PREFIX } from './core/mute-panel-components.js';
+import {
+  buildCallPanelComponents,
+  MUTE_TOGGLE_PREFIX,
+  RECORDING_START_ID,
+  RECORDING_PAUSE_ID,
+  RECORDING_FINISH_ID,
+} from './core/call-panel-components.js';
 import { cebolinhaSpeak as c } from './utils/cebolinha-speak.js';
 
 printBanner();
@@ -36,13 +42,34 @@ client.once('ready', async () => {
 });
 
 /**
- * Alterna o mute de um usuário clicado no painel `/c-mute-panel` e
- * atualiza os botões da mesma mensagem com o estado atual de todo mundo
- * que aparece nela (não só de quem foi clicado).
+ * Reconstrói o painel inteiro (linha de gravação + linhas de mute) a
+ * partir do estado atual. Nunca vai buscar quem está no canal de voz
+ * agora — só reconsulta, um a um, os usuários que já apareciam nos
+ * botões da mensagem original. Entradas/saídas do canal depois de o
+ * painel ter sido aberto não são refletidas (decisão deliberada, não é
+ * um caso que este painel precisa cobrir).
  * @param {import('discord.js').ButtonInteraction} interaction
- * @param {import('pino').Logger} logger
+ * @returns {Promise<import('discord.js').ActionRowBuilder[]>}
  */
-async function handleMuteToggle(interaction, logger) {
+async function rebuildPanelComponents(interaction) {
+  const panelUserIds = interaction.message.components
+    .flatMap((row) => row.components)
+    .filter((component) => component.customId?.startsWith(`${MUTE_TOGGLE_PREFIX}:`))
+    .map((component) => component.customId.slice(MUTE_TOGGLE_PREFIX.length + 1));
+
+  const panelMembers = (
+    await Promise.all(panelUserIds.map((id) => interaction.guild.members.fetch(id).catch(() => null)))
+  ).filter(Boolean);
+
+  const sessionState = sessionManager.get(interaction.guildId).state;
+  return buildCallPanelComponents({ sessionState, members: panelMembers });
+}
+
+/**
+ * Alterna o mute de um usuário clicado no painel `/c-call-panel`.
+ * @param {import('discord.js').ButtonInteraction} interaction
+ */
+async function handleMuteToggle(interaction) {
   const userId = interaction.customId.slice(MUTE_TOGGLE_PREFIX.length + 1);
   const guildLogger = logger.child({ guildId: interaction.guildId });
 
@@ -61,29 +88,122 @@ async function handleMuteToggle(interaction, logger) {
   }
 
   try {
-    await member.voice.setMute(!member.voice.serverMute, 'Alternado via painel /c-mute-panel');
+    await member.voice.setMute(!member.voice.serverMute, 'Alternado via painel /c-call-panel');
   } catch (err) {
     guildLogger.error({ err: err.message, userId }, 'Falha ao alternar mute via painel');
     await interaction.reply({ content: c('Não consegui alternar o mute desse usuário.'), ephemeral: true });
     return;
   }
 
-  const panelUserIds = interaction.message.components.flatMap((row) =>
-    row.components.map((button) => button.customId.slice(MUTE_TOGGLE_PREFIX.length + 1)),
-  );
-  const panelMembers = (
-    await Promise.all(panelUserIds.map((id) => interaction.guild.members.fetch(id).catch(() => null)))
-  ).filter(Boolean);
-
-  await interaction.update({ components: buildMutePanelComponents(panelMembers) });
+  await interaction.update({ components: await rebuildPanelComponents(interaction) });
 }
 
+/**
+ * Botão "Iniciar/Retomar" do painel.
+ * @param {import('discord.js').ButtonInteraction} interaction
+ */
+async function handlePanelStart(interaction) {
+  const guildId = interaction.guildId;
+  const connection = getVoiceConnection(guildId);
+  if (!connection) {
+    await interaction.reply({
+      content: `${c('O bot precisa estar conectado a um canal de voz. Use')} \`/c-join\` ${c('primeiro.')}`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const result = startOrResumeSession(guildId, {
+    sessionManager,
+    recorderRegistry,
+    nicknameStore,
+    env,
+    logger: logger.child({ guildId }),
+    connection,
+    guild: interaction.guild,
+    textChannelId: interaction.channelId,
+    startedBy: interaction.user.id,
+  });
+
+  if (!result.ok) {
+    await interaction.reply({ content: c('Já existe uma gravação em andamento neste servidor.'), ephemeral: true });
+    return;
+  }
+
+  await interaction.update({ components: await rebuildPanelComponents(interaction) });
+}
+
+/**
+ * Botão "Pausar" do painel.
+ * @param {import('discord.js').ButtonInteraction} interaction
+ */
+async function handlePanelPause(interaction) {
+  const result = pauseSession(interaction.guildId, { sessionManager, recorderRegistry });
+  if (!result.ok) {
+    await interaction.reply({ content: c('Não há gravação em andamento para pausar.'), ephemeral: true });
+    return;
+  }
+
+  await interaction.update({ components: await rebuildPanelComponents(interaction) });
+}
+
+/**
+ * Botão "Finalizar" do painel. Transcrever pode demorar (chamadas à
+ * Groq), então confirma a interação primeiro (`deferUpdate`) e edita a
+ * mensagem depois, em vez de arriscar o timeout de 3s do Discord.
+ * @param {import('discord.js').ButtonInteraction} interaction
+ */
+async function handlePanelFinish(interaction) {
+  const guildId = interaction.guildId;
+  await interaction.deferUpdate();
+
+  const guildLogger = logger.child({ guildId });
+  const result = await finishSession(guildId, { sessionManager, recorderRegistry, env, logger: guildLogger });
+  const components = await rebuildPanelComponents(interaction);
+
+  if (!result.ok) {
+    const message =
+      result.code === 'not-recording'
+        ? c('Não há gravação ativa para finalizar.')
+        : c('Houve um erro ao transcrever. Os áudios foram mantidos para uma nova tentativa.');
+    await interaction.editReply({ content: message, components });
+    return;
+  }
+
+  if (result.emptyMessage) {
+    await interaction.editReply({
+      content: c('Gravação encerrada, mas nenhuma fala foi capturada — nada para transcrever.'),
+      components,
+    });
+    return;
+  }
+
+  const files = result.parts.map(
+    (part, index) =>
+      new AttachmentBuilder(Buffer.from(part, 'utf8'), {
+        name: result.parts.length > 1 ? `transcricao-parte-${index + 1}.md` : 'transcricao.md',
+      }),
+  );
+  await interaction.editReply({ content: `✅ ${c('Gravação finalizada. Transcrição em anexo.')}`, components, files });
+}
+
+const PANEL_BUTTON_HANDLERS = {
+  [RECORDING_START_ID]: handlePanelStart,
+  [RECORDING_PAUSE_ID]: handlePanelPause,
+  [RECORDING_FINISH_ID]: handlePanelFinish,
+};
+
 client.on('interactionCreate', async (interaction) => {
-  if (interaction.isButton() && interaction.customId.startsWith(`${MUTE_TOGGLE_PREFIX}:`)) {
+  if (interaction.isButton()) {
+    const handler = interaction.customId.startsWith(`${MUTE_TOGGLE_PREFIX}:`)
+      ? handleMuteToggle
+      : PANEL_BUTTON_HANDLERS[interaction.customId];
+    if (!handler) return;
+
     try {
-      await handleMuteToggle(interaction, logger);
+      await handler(interaction);
     } catch (err) {
-      logger.error({ err: err.message, guildId: interaction.guildId }, 'Erro não tratado no painel de mute');
+      logger.error({ err: err.message, guildId: interaction.guildId }, 'Erro não tratado no painel');
     }
     return;
   }

@@ -1,5 +1,5 @@
 import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
-import * as session from '../core/session.js';
+import { pauseSession } from '../core/session-lifecycle.js';
 import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 export const data = new SlashCommandBuilder()
@@ -14,11 +14,10 @@ export const data = new SlashCommandBuilder()
  *   recorderRegistry: ReturnType<typeof import('../core/recorder-registry.js').createRecorderRegistry>,
  * }} ctx
  */
-export async function execute(interaction, { sessionManager, recorderRegistry }) {
-  const guildId = interaction.guildId;
-  const result = session.pause(sessionManager.get(guildId));
+export async function execute(interaction, ctx) {
+  const result = pauseSession(interaction.guildId, ctx);
 
-  if (!result.success) {
+  if (!result.ok) {
     await interaction.reply({
       content: `${c('Não há gravação em andamento para pausar. Use')} \`/c-status\` ${c('para ver o estado atual.')}`,
       ephemeral: true,
@@ -26,7 +25,5 @@ export async function execute(interaction, { sessionManager, recorderRegistry })
     return;
   }
 
-  sessionManager.set(guildId, result.session);
-  recorderRegistry.get(guildId)?.pause();
   await interaction.reply(`${c('⏸️ Gravação pausada. Novas falas não serão capturadas até o')} \`/c-start\`.`);
 }

@@ -1,9 +1,112 @@
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import * as session from './session.js';
+import { createRecorder } from './recorder.js';
 import { createTranscriber } from '../services/transcriber/index.js';
 import { transcribeSegments } from '../services/transcriber/run-batch.js';
 import { buildTranscript, splitTranscriptParts } from '../services/formatter.js';
+
+/**
+ * Resolve o nome de exibição de um usuário: alias interno (`/c-nickname`)
+ * primeiro, senão o nickname/nome do Discord.
+ * @param {import('discord.js').Guild} guild
+ * @param {ReturnType<typeof import('./nickname-store.js').createNicknameStore>} nicknameStore
+ * @param {string} userId
+ * @returns {Promise<string>}
+ */
+export async function resolveDisplayName(guild, nicknameStore, userId) {
+  const alias = nicknameStore.get(guild.id, userId);
+  if (alias) return alias;
+  const cached = guild.members.cache.get(userId);
+  if (cached) return cached.displayName;
+  try {
+    const fetched = await guild.members.fetch(userId);
+    return fetched.displayName;
+  } catch {
+    return userId;
+  }
+}
+
+/**
+ * Inicia a gravação (se a sessão está `idle`) ou retoma (se está
+ * `paused`), no canal em que o bot já está conectado. Usado tanto pelo
+ * `/c-start` quanto pelo botão de gravação do `/c-call-panel`.
+ * @param {string} guildId
+ * @param {{
+ *   sessionManager: ReturnType<typeof import('./session-manager.js').createSessionManager>,
+ *   recorderRegistry: ReturnType<typeof import('./recorder-registry.js').createRecorderRegistry>,
+ *   nicknameStore: ReturnType<typeof import('./nickname-store.js').createNicknameStore>,
+ *   env: import('../config/env.js').Env,
+ *   logger: import('pino').Logger,
+ *   connection: import('@discordjs/voice').VoiceConnection,
+ *   guild: import('discord.js').Guild,
+ *   textChannelId: string,
+ *   startedBy: string,
+ * }} ctx
+ * @returns {{ ok: false, code: 'already-recording' } | { ok: true, action: 'started' | 'resumed' }}
+ */
+export function startOrResumeSession(
+  guildId,
+  { sessionManager, recorderRegistry, nicknameStore, env, logger, connection, guild, textChannelId, startedBy },
+) {
+  const current = sessionManager.get(guildId);
+
+  if (current.state === 'paused') {
+    const result = session.resume(current);
+    sessionManager.set(guildId, result.session);
+    recorderRegistry.get(guildId)?.resume();
+    return { ok: true, action: 'resumed' };
+  }
+
+  const result = session.start(current, {
+    voiceChannelId: connection.joinConfig.channelId,
+    textChannelId,
+    startedBy,
+  });
+  if (!result.success) {
+    return { ok: false, code: 'already-recording' };
+  }
+
+  sessionManager.set(guildId, result.session);
+
+  const recorder = createRecorder({
+    connection,
+    sessionId: result.session.id,
+    dataDir: env.DATA_DIR,
+    silenceMs: env.SILENCE_MS,
+    minSegmentMs: env.MIN_SEGMENT_MS,
+    resolveDisplayName: (userId) => resolveDisplayName(guild, nicknameStore, userId),
+    logger,
+    onSegment(segment) {
+      const active = sessionManager.get(guildId);
+      active.segments.push(segment);
+      active.speakerIds.add(segment.userId);
+    },
+  });
+  recorderRegistry.set(guildId, recorder);
+
+  return { ok: true, action: 'started' };
+}
+
+/**
+ * Pausa a captura de uma sessão `recording`. Usado pelo `/c-pause` e pelo
+ * botão de pausa do `/c-call-panel`.
+ * @param {string} guildId
+ * @param {{
+ *   sessionManager: ReturnType<typeof import('./session-manager.js').createSessionManager>,
+ *   recorderRegistry: ReturnType<typeof import('./recorder-registry.js').createRecorderRegistry>,
+ * }} ctx
+ * @returns {{ ok: false, code: 'not-recording' } | { ok: true }}
+ */
+export function pauseSession(guildId, { sessionManager, recorderRegistry }) {
+  const result = session.pause(sessionManager.get(guildId));
+  if (!result.success) {
+    return { ok: false, code: 'not-recording' };
+  }
+  sessionManager.set(guildId, result.session);
+  recorderRegistry.get(guildId)?.pause();
+  return { ok: true };
+}
 
 /**
  * Orquestra o encerramento de uma sessão: para a captura, transcreve,
