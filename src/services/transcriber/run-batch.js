@@ -36,6 +36,9 @@ async function withRetry(fn, { retries, baseDelayMs, sleepFn }) {
  * @param {number} [options.retries]
  * @param {number} [options.baseDelayMs]
  * @param {(ms: number) => Promise<void>} [options.sleepFn]
+ * @param {import('pino').Logger} [options.logger] Loga o motivo real de
+ *   cada segmento que esgota as tentativas — sem isso, a causa (rate
+ *   limit, rede, etc.) fica invisível por trás do `fallbackText`.
  * @returns {Promise<Array<Record<string, unknown> & { text: string }>>}
  */
 export async function transcribeSegments(
@@ -49,6 +52,7 @@ export async function transcribeSegments(
     retries = DEFAULT_RETRIES,
     baseDelayMs = DEFAULT_BASE_DELAY_MS,
     sleepFn = realSleep,
+    logger,
   } = {},
 ) {
   const results = new Array(segments.length);
@@ -65,7 +69,11 @@ export async function transcribeSegments(
           { retries, baseDelayMs, sleepFn },
         );
         results[index] = { ...segment, text };
-      } catch {
+      } catch (err) {
+        logger?.error(
+          { err: err.message, filePath: segment.filePath, userId: segment.userId },
+          'Segmento esgotou as tentativas de transcrição, usando texto de fallback',
+        );
         results[index] = { ...segment, text: fallbackText };
       }
     }

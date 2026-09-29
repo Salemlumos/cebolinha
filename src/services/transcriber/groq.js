@@ -1,5 +1,6 @@
 import { createReadStream, statSync } from 'node:fs';
 import OpenAI from 'openai';
+import { createRateLimiter } from './rate-limiter.js';
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 const GROQ_FILE_LIMIT_BYTES = 25 * 1024 * 1024;
@@ -10,11 +11,17 @@ const GROQ_FILE_LIMIT_BYTES = 25 * 1024 * 1024;
  * conta em https://console.groq.com) e não consome CPU/RAM do servidor que
  * hospeda o bot. Usa o endpoint compatível com a API da OpenAI, então
  * reaproveita o mesmo SDK `openai` apontando para outra `baseURL`.
+ *
+ * O tier grátis da Groq limita a 20 requisições/minuto de Whisper — em
+ * vez de descobrir isso via erro 429 (perdendo o segmento), espaçamos as
+ * chamadas com um rate limiter (`env.TRANSCRIBE_RPM_LIMIT`, default 18,
+ * uma margem de segurança abaixo do limite real).
  * @param {import('../../config/env.js').Env} env
  * @returns {import('./index.js').Transcriber}
  */
 export function createGroqTranscriber(env) {
   const client = new OpenAI({ apiKey: env.GROQ_API_KEY, baseURL: GROQ_BASE_URL });
+  const rateLimiter = createRateLimiter({ maxPerMinute: env.TRANSCRIBE_RPM_LIMIT });
 
   return {
     async transcribe(filePath, { language = env.TRANSCRIBE_LANGUAGE } = {}) {
@@ -22,6 +29,8 @@ export function createGroqTranscriber(env) {
       if (size > GROQ_FILE_LIMIT_BYTES) {
         throw new Error(`Arquivo excede o limite de 25MB da API da Groq (${size} bytes): ${filePath}`);
       }
+
+      await rateLimiter.acquire();
 
       const response = await client.audio.transcriptions.create({
         file: createReadStream(filePath),

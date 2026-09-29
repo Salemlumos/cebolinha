@@ -49,6 +49,7 @@ export async function finishSession(guildId, { sessionManager, recorderRegistry,
     const transcribed = await transcribeSegments(transcriber, finishingSession.segments, {
       concurrency: env.TRANSCRIBE_CONCURRENCY,
       language: env.TRANSCRIBE_LANGUAGE,
+      logger,
     });
     const participantNames = new Map(transcribed.map((seg) => [seg.userId, seg.displayName]));
 
