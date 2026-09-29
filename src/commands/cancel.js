@@ -5,7 +5,7 @@ import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 export const data = new SlashCommandBuilder()
   .setName('c-cancel')
   .setDescription(c('Descarta a gravação atual e apaga os áudios, sem transcrever.'))
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction

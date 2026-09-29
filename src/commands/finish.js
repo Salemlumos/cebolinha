@@ -5,7 +5,7 @@ import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 export const data = new SlashCommandBuilder()
   .setName('c-finish')
   .setDescription(c('Encerra a gravação, transcreve tudo e posta o resultado no canal.'))
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 function buildAttachments(parts) {
   return parts.map(

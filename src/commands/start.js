@@ -7,7 +7,7 @@ import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 export const data = new SlashCommandBuilder()
   .setName('c-start')
   .setDescription(c('Inicia a gravação (ou retoma, se estiver pausada) no canal onde o bot já está.'))
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 async function resolveDisplayName(guild, nicknameStore, userId) {
   const alias = nicknameStore.get(guild.id, userId);

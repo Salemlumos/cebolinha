@@ -5,7 +5,7 @@ export const data = new SlashCommandBuilder()
   .setName('c-mute')
   .setDescription(c('Silencia um usuário específico, esteja o bot conectado ou não.'))
   .addUserOption((option) => option.setName('usuario').setDescription(c('Usuário a silenciar.')).setRequired(true))
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction

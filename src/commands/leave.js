@@ -5,7 +5,7 @@ import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 export const data = new SlashCommandBuilder()
   .setName('c-leave')
   .setDescription(c('Desconecta o bot do canal de voz atual.'))
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction

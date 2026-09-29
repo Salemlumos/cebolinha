@@ -5,7 +5,7 @@ import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 export const data = new SlashCommandBuilder()
   .setName('c-pause')
   .setDescription(c('Pausa a captura de áudio da gravação atual.'))
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction

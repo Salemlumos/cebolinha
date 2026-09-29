@@ -5,7 +5,7 @@ export const data = new SlashCommandBuilder()
   .setName('c-unmute')
   .setDescription(c('Remove o silenciamento de um usuário específico.'))
   .addUserOption((option) => option.setName('usuario').setDescription(c('Usuário a dessilenciar.')).setRequired(true))
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction

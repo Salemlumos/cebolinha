@@ -12,7 +12,7 @@ export const data = new SlashCommandBuilder()
       .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
       .setRequired(true),
   )
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction

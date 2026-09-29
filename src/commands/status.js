@@ -23,7 +23,7 @@ function formatDuration(session) {
 export const data = new SlashCommandBuilder()
   .setName('c-status')
   .setDescription(c('Mostra o estado atual da gravação neste servidor.'))
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction

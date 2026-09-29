@@ -6,7 +6,7 @@ export const data = new SlashCommandBuilder()
   .setDescription(c('Define um apelido interno do bot para um usuário (usado na transcrição e no /c-status).'))
   .addUserOption((option) => option.setName('usuario').setDescription(c('Usuário.')).setRequired(true))
   .addStringOption((option) => option.setName('apelido').setDescription(c('Apelido a usar.')).setRequired(true))
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction

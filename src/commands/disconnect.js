@@ -5,7 +5,7 @@ export const data = new SlashCommandBuilder()
   .setName('c-disconnect')
   .setDescription(c('Expulsa um usuário da chamada de voz em que estiver.'))
   .addUserOption((option) => option.setName('usuario').setDescription(c('Usuário a desconectar.')).setRequired(true))
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
