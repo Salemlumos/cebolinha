@@ -132,6 +132,7 @@ tem um default razoável.
 | `SILENCE_MS` | `1000` | Silêncio necessário pra considerar uma fala encerrada. |
 | `MIN_SEGMENT_MS` | `400` | Segmentos mais curtos que isso são descartados. |
 | `TRANSCRIBE_CONCURRENCY` | `3` | Quantos segmentos transcrever em paralelo. |
+| `TRANSCRIBE_RPM_LIMIT` | `18` | Limite de requisições/minuto pro rate limiter da Groq (tier grátis = 20/min; deixamos margem). Suba se estiver num plano pago. |
 | `KEEP_AUDIO` | `false` | Se `true`, não apaga os WAVs depois do `/c-finish`. |
 | `DATA_DIR` | `./data` | Onde os áudios ficam durante a sessão. |
 | `EMPTY_CHANNEL_TIMEOUT_MS` | `300000` (5 min) | Tempo sozinho no canal antes do fail-safe agir. |

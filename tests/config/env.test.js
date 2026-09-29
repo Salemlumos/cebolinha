@@ -20,6 +20,7 @@ describe('parseEnv', () => {
       SILENCE_MS: 1000,
       MIN_SEGMENT_MS: 400,
       TRANSCRIBE_CONCURRENCY: 3,
+      TRANSCRIBE_RPM_LIMIT: 18,
       MAX_SESSION_MINUTES: 120,
       KEEP_AUDIO: false,
       DATA_DIR: './data',

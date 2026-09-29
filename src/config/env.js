@@ -11,6 +11,7 @@ import { z } from 'zod';
  * @property {number} SILENCE_MS
  * @property {number} MIN_SEGMENT_MS
  * @property {number} TRANSCRIBE_CONCURRENCY
+ * @property {number} TRANSCRIBE_RPM_LIMIT
  * @property {number} MAX_SESSION_MINUTES
  * @property {boolean} KEEP_AUDIO
  * @property {string} DATA_DIR
@@ -35,6 +36,9 @@ const envSchema = z
     SILENCE_MS: z.coerce.number().int().positive().default(1000),
     MIN_SEGMENT_MS: z.coerce.number().int().positive().default(400),
     TRANSCRIBE_CONCURRENCY: z.coerce.number().int().positive().default(3),
+    // Tier grátis da Groq: 20 req/min pra Whisper. 18 é uma margem de
+    // segurança — suba se estiver num plano pago com limite maior.
+    TRANSCRIBE_RPM_LIMIT: z.coerce.number().int().positive().default(18),
     MAX_SESSION_MINUTES: z.coerce.number().int().positive().default(120),
     KEEP_AUDIO: z
       .string()
