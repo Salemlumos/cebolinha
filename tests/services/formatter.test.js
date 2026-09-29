@@ -43,6 +43,18 @@ describe('buildTranscript', () => {
     expect(transcript).toContain('Duração: 00:00:10');
     expect(transcript).toContain('[00:00:05] Alice: olá pessoal');
   });
+
+  it('separa falas de participantes diferentes com uma linha em branco', () => {
+    const sessionStartedAt = new Date(0);
+    const transcript = buildTranscript({
+      segments: [seg('u1', 'Alice', 0, 1000, 'oi'), seg('u2', 'Bob', 5000, 6000, 'oi Alice')],
+      sessionStartedAt,
+      sessionEndedAt: new Date(10_000),
+      participants: ['Alice', 'Bob'],
+    });
+
+    expect(transcript).toContain('[00:00:00] Alice: oi\n\n[00:00:05] Bob: oi Alice');
+  });
 });
 
 describe('splitTranscriptParts', () => {

@@ -46,7 +46,8 @@ export function mergeSegments(segments, mergeGapMs = DEFAULT_MERGE_GAP_MS) {
 /**
  * Monta o transcript final em markdown: cabeçalho (data, duração,
  * participantes) seguido das falas ordenadas e mescladas, no formato
- * `[HH:MM:SS] Nome: texto` com tempo relativo ao início da sessão.
+ * `[HH:MM:SS] Nome: texto` com tempo relativo ao início da sessão, com uma
+ * linha em branco entre cada fala pra facilitar a leitura.
  * @param {Object} params
  * @param {TranscribedSegment[]} params.segments
  * @param {Date} params.sessionStartedAt
@@ -71,7 +72,7 @@ export function buildTranscript({ segments, sessionStartedAt, sessionEndedAt, pa
     '',
   ].join('\n');
 
-  return `${header}\n${lines.join('\n')}\n`;
+  return `${header}\n${lines.join('\n\n')}\n`;
 }
 
 /**
