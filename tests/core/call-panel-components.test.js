@@ -4,9 +4,11 @@ import {
   buildRecordingControlsRow,
   buildMuteButtonRows,
   buildCallPanelComponents,
+  buildPanelEmbed,
   RECORDING_START_ID,
   RECORDING_PAUSE_ID,
   RECORDING_FINISH_ID,
+  RECORDING_CANCEL_ID,
   MUTE_TOGGLE_PREFIX,
 } from '../../src/core/call-panel-components.js';
 
@@ -15,7 +17,7 @@ function makeMember({ id, displayName, muted = false, exempt = false }) {
     id,
     displayName,
     voice: { serverMute: muted },
-    permissions: { has: (flag) => exempt && flag === PermissionFlagsBits.ManageGuild },
+    permissions: { has: (flag) => exempt && flag === PermissionFlagsBits.Administrator },
   };
 }
 
@@ -24,34 +26,44 @@ function findButton(row, customId) {
 }
 
 describe('buildRecordingControlsRow', () => {
-  it('estado idle: Iniciar habilitado, Pausar e Finalizar desabilitados', () => {
+  it('estado idle: Iniciar habilitado, Pausar/Finalizar/Cancelar desabilitados', () => {
     const row = buildRecordingControlsRow('idle');
     expect(findButton(row, RECORDING_START_ID).disabled).toBe(false);
     expect(findButton(row, RECORDING_START_ID).label).toBe('🔴 Iniciar');
     expect(findButton(row, RECORDING_PAUSE_ID).disabled).toBe(true);
     expect(findButton(row, RECORDING_FINISH_ID).disabled).toBe(true);
+    expect(findButton(row, RECORDING_CANCEL_ID).disabled).toBe(true);
   });
 
-  it('estado recording: Iniciar desabilitado, Pausar e Finalizar habilitados', () => {
+  it('estado recording: Iniciar desabilitado, Pausar/Finalizar/Cancelar habilitados', () => {
     const row = buildRecordingControlsRow('recording');
     expect(findButton(row, RECORDING_START_ID).disabled).toBe(true);
     expect(findButton(row, RECORDING_PAUSE_ID).disabled).toBe(false);
     expect(findButton(row, RECORDING_FINISH_ID).disabled).toBe(false);
+    expect(findButton(row, RECORDING_CANCEL_ID).disabled).toBe(false);
   });
 
-  it('estado paused: botão de iniciar mostra "Retomar" e fica habilitado; Finalizar também habilitado', () => {
+  it('estado paused: botão de iniciar mostra "Retomar" e fica habilitado; Finalizar/Cancelar também', () => {
     const row = buildRecordingControlsRow('paused');
     expect(findButton(row, RECORDING_START_ID).label).toBe('▶️ Retomar');
     expect(findButton(row, RECORDING_START_ID).disabled).toBe(false);
     expect(findButton(row, RECORDING_PAUSE_ID).disabled).toBe(true);
     expect(findButton(row, RECORDING_FINISH_ID).disabled).toBe(false);
+    expect(findButton(row, RECORDING_CANCEL_ID).disabled).toBe(false);
   });
 
-  it('estado finishing: os três botões ficam desabilitados', () => {
+  it('estado finishing: os quatro botões ficam desabilitados', () => {
     const row = buildRecordingControlsRow('finishing');
     expect(findButton(row, RECORDING_START_ID).disabled).toBe(true);
     expect(findButton(row, RECORDING_PAUSE_ID).disabled).toBe(true);
     expect(findButton(row, RECORDING_FINISH_ID).disabled).toBe(true);
+    expect(findButton(row, RECORDING_CANCEL_ID).disabled).toBe(true);
+  });
+
+  it('Finalizar usa estilo neutro (Primary) e Cancelar usa Danger', () => {
+    const row = buildRecordingControlsRow('recording');
+    expect(findButton(row, RECORDING_FINISH_ID).style).toBe(ButtonStyle.Primary);
+    expect(findButton(row, RECORDING_CANCEL_ID).style).toBe(ButtonStyle.Danger);
   });
 });
 
@@ -95,6 +107,20 @@ describe('buildMuteButtonRows', () => {
     const totalButtons = rows.reduce((sum, row) => sum + row.components.length, 0);
 
     expect(totalButtons).toBe(20);
+  });
+});
+
+describe('buildPanelEmbed', () => {
+  it('mostra o nome do canal e o estado no título/descrição', () => {
+    const embed = buildPanelEmbed({ channelName: 'Geral', sessionState: 'recording' }).toJSON();
+    expect(embed.title).toBe('🎛️ Painel — Geral');
+    expect(embed.description).toContain('🔴 Gravando');
+  });
+
+  it('funciona sem nome de canal (fallback genérico no título)', () => {
+    const embed = buildPanelEmbed({ sessionState: 'idle' }).toJSON();
+    expect(embed.title).toBe('🎛️ Painel');
+    expect(embed.description).toContain('⚪ Parado');
   });
 });
 

@@ -1,5 +1,5 @@
 import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
-import { buildCallPanelComponents } from '../core/call-panel-components.js';
+import { buildCallPanelComponents, buildPanelEmbed } from '../core/call-panel-components.js';
 import { cebolinhaSpeak as c } from '../utils/cebolinha-speak.js';
 
 export const data = new SlashCommandBuilder()
@@ -33,7 +33,7 @@ export async function execute(interaction, { sessionManager }) {
   const sessionState = sessionManager.get(interaction.guildId).state;
 
   await interaction.reply({
-    content: `🎛️ ${c('Painel de')} **${channel.name}**. ${c('🔊 livre · 🔇 mutado · 🛡️ administrador (protegido). A linha de cima controla a gravação.')}`,
+    embeds: [buildPanelEmbed({ channelName: channel.name, sessionState })],
     components: buildCallPanelComponents({ sessionState, members }),
     ephemeral: true,
   });

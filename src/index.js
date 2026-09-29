@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { join } from 'node:path';
 import { AttachmentBuilder, Client, GatewayIntentBits } from 'discord.js';
 import { getVoiceConnection, getVoiceConnections } from '@discordjs/voice';
 import { loadEnv } from './config/env.js';
@@ -14,10 +15,13 @@ import { isMuteExempt } from './core/mute-exempt.js';
 import {
   buildCallPanelComponents,
   buildRecordingControlsRow,
+  buildMuteButtonRows,
+  buildPanelEmbed,
   MUTE_TOGGLE_PREFIX,
   RECORDING_START_ID,
   RECORDING_PAUSE_ID,
   RECORDING_FINISH_ID,
+  RECORDING_CANCEL_ID,
 } from './core/call-panel-components.js';
 import { cebolinhaSpeak as c } from './utils/cebolinha-speak.js';
 
@@ -27,7 +31,7 @@ const env = loadEnv();
 const logger = createLogger({ level: env.LOG_LEVEL, pretty: process.env.NODE_ENV !== 'production' });
 const sessionManager = createSessionManager();
 const recorderRegistry = createRecorderRegistry();
-const nicknameStore = createNicknameStore();
+const nicknameStore = createNicknameStore(join(env.DATA_DIR, 'nicknames.json'));
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
@@ -43,31 +47,75 @@ client.once('ready', async () => {
 });
 
 /**
- * Reconstrói o painel inteiro (linha de gravação + linhas de mute) a
- * partir do estado atual. Nunca vai buscar quem está no canal de voz
- * agora — só reconsulta, um a um, os usuários que já apareciam nos
- * botões da mensagem original. Entradas/saídas do canal depois de o
- * painel ter sido aberto não são refletidas (decisão deliberada, não é
- * um caso que este painel precisa cobrir).
+ * Refaz a lista de membros do painel a partir do que já está nos botões
+ * da mensagem — nunca consulta quem está no canal de voz agora. Entradas
+ * e saídas do canal depois de o painel ter sido aberto não são
+ * refletidas (decisão deliberada, não é um caso que este painel precisa
+ * cobrir).
  * @param {import('discord.js').ButtonInteraction} interaction
- * @returns {Promise<import('discord.js').ActionRowBuilder[]>}
+ * @returns {Promise<import('discord.js').GuildMember[]>}
  */
-async function rebuildPanelComponents(interaction) {
+async function getPanelMembers(interaction) {
   const panelUserIds = interaction.message.components
     .flatMap((row) => row.components)
     .filter((component) => component.customId?.startsWith(`${MUTE_TOGGLE_PREFIX}:`))
     .map((component) => component.customId.slice(MUTE_TOGGLE_PREFIX.length + 1));
 
-  const panelMembers = (
+  return (
     await Promise.all(panelUserIds.map((id) => interaction.guild.members.fetch(id).catch(() => null)))
   ).filter(Boolean);
-
-  const sessionState = sessionManager.get(interaction.guildId).state;
-  return buildCallPanelComponents({ sessionState, members: panelMembers });
 }
 
 /**
- * Alterna o mute de um usuário clicado no painel `/c-call-panel`.
+ * Nome do canal a mostrar no título do painel: o da sessão ativa, se
+ * houver, senão o canal em que o primeiro membro listado estiver agora
+ * (aproximação só para exibição — nunca afeta o que os botões fazem).
+ * @param {import('discord.js').ButtonInteraction} interaction
+ * @param {import('discord.js').GuildMember[]} members
+ * @returns {string | undefined}
+ */
+function resolvePanelChannelName(interaction, members) {
+  const activeSession = sessionManager.get(interaction.guildId);
+  if (activeSession.voiceChannelId) {
+    return interaction.guild.channels.cache.get(activeSession.voiceChannelId)?.name;
+  }
+  return members[0]?.voice?.channel?.name;
+}
+
+/**
+ * Reconstrói o embed + os componentes do painel a partir do estado atual.
+ * @param {import('discord.js').ButtonInteraction} interaction
+ * @returns {Promise<{ embed: import('discord.js').EmbedBuilder, components: import('discord.js').ActionRowBuilder[] }>}
+ */
+async function rebuildPanel(interaction) {
+  const members = await getPanelMembers(interaction);
+  const sessionState = sessionManager.get(interaction.guildId).state;
+  const channelName = resolvePanelChannelName(interaction, members);
+  return {
+    embed: buildPanelEmbed({ channelName, sessionState }),
+    components: buildCallPanelComponents({ sessionState, members }),
+  };
+}
+
+/**
+ * Anuncia publicamente (não efêmero) uma mudança de estado da gravação
+ * feita via painel — quem está na call precisa saber, mesmo que só o
+ * admin veja o painel em si.
+ * @param {import('discord.js').ButtonInteraction} interaction
+ * @param {string | { content: string, files?: import('discord.js').AttachmentBuilder[] }} payload
+ */
+async function announcePublicly(interaction, payload) {
+  const body = typeof payload === 'string' ? { content: payload } : payload;
+  await interaction.followUp({ ...body, ephemeral: false }).catch((err) =>
+    logger.error({ err: err.message, guildId: interaction.guildId }, 'Falha ao anunciar publicamente via painel'),
+  );
+}
+
+/**
+ * Alterna o mute de um usuário clicado no painel `/c-call-panel`. Fica
+ * só no painel (efêmero) — diferente de start/pause/finish/cancel, um
+ * toggle de mute não gera aviso público (evita spam se o admin mutar
+ * várias pessoas em sequência).
  * @param {import('discord.js').ButtonInteraction} interaction
  */
 async function handleMuteToggle(interaction) {
@@ -96,7 +144,8 @@ async function handleMuteToggle(interaction) {
     return;
   }
 
-  await interaction.update({ components: await rebuildPanelComponents(interaction) });
+  const panel = await rebuildPanel(interaction);
+  await interaction.update({ embeds: [panel.embed], components: panel.components });
 }
 
 /**
@@ -131,7 +180,15 @@ async function handlePanelStart(interaction) {
     return;
   }
 
-  await interaction.update({ components: await rebuildPanelComponents(interaction) });
+  const panel = await rebuildPanel(interaction);
+  await interaction.update({ embeds: [panel.embed], components: panel.components });
+
+  const channel = interaction.guild.channels.cache.get(connection.joinConfig.channelId);
+  const publicMessage =
+    result.action === 'resumed'
+      ? c('▶️ Gravação retomada.')
+      : `${c('🔴 Gravando esta call em')} **${channel?.name ?? connection.joinConfig.channelId}**. ${c('Avisem quem ainda não sabia que a conversa está sendo registrada.')}`;
+  await announcePublicly(interaction, publicMessage);
 }
 
 /**
@@ -145,46 +202,64 @@ async function handlePanelPause(interaction) {
     return;
   }
 
-  await interaction.update({ components: await rebuildPanelComponents(interaction) });
+  const panel = await rebuildPanel(interaction);
+  await interaction.update({ embeds: [panel.embed], components: panel.components });
+  await announcePublicly(interaction, c('⏸️ Gravação pausada. Novas falas não serão capturadas até retomar.'));
 }
 
 /**
- * Botão "Finalizar" do painel. Transcrever pode demorar (chamadas à
- * Groq), então confirma a interação primeiro (`deferUpdate`) e edita a
- * mensagem depois, em vez de arriscar o timeout de 3s do Discord.
+ * Botão "Cancelar" do painel: descarta a sessão e os áudios, sem
+ * transcrever.
+ * @param {import('discord.js').ButtonInteraction} interaction
+ */
+async function handlePanelCancel(interaction) {
+  const guildId = interaction.guildId;
+  const result = await cancelSession(guildId, { sessionManager, recorderRegistry, env, logger: logger.child({ guildId }) });
+  if (!result.ok) {
+    await interaction.reply({ content: c('Não há gravação ativa para cancelar.'), ephemeral: true });
+    return;
+  }
+
+  const panel = await rebuildPanel(interaction);
+  await interaction.update({ embeds: [panel.embed], components: panel.components });
+  await announcePublicly(interaction, `🗑️ ${c('Gravação cancelada e áudios apagados.')}`);
+}
+
+/**
+ * Botão "Finalizar" do painel. Transcrever pode demorar minutos (rate
+ * limit da Groq), então: confirma a interação primeiro (`deferUpdate`),
+ * mostra de imediato um estado "transcrevendo..." (senão o painel fica
+ * com cara de travado), e só então processa e edita com o resultado
+ * final — sucesso, vazio ou erro, sempre com aviso público também.
  * @param {import('discord.js').ButtonInteraction} interaction
  */
 async function handlePanelFinish(interaction) {
   const guildId = interaction.guildId;
   await interaction.deferUpdate();
 
-  // Transcrever pode levar minutos (rate limit da Groq) — sem isso, o
-  // painel fica com cara de travado até o fim, sem nenhum feedback.
-  const interimComponents = await rebuildPanelComponents(interaction);
-  interimComponents[0] = buildRecordingControlsRow('finishing');
+  const membersBeforeFinish = await getPanelMembers(interaction);
+  const channelName = resolvePanelChannelName(interaction, membersBeforeFinish);
   await interaction.editReply({
-    content: `⏳ ${c('Finalizando e transcrevendo... isso pode levar alguns minutos dependendo da quantidade de falas.')}`,
-    components: interimComponents,
+    embeds: [buildPanelEmbed({ channelName, sessionState: 'finishing' })],
+    components: [buildRecordingControlsRow('finishing'), ...buildMuteButtonRows(membersBeforeFinish)],
   });
 
   const guildLogger = logger.child({ guildId });
   const result = await finishSession(guildId, { sessionManager, recorderRegistry, env, logger: guildLogger });
-  const components = await rebuildPanelComponents(interaction);
+  const panel = await rebuildPanel(interaction);
+  await interaction.editReply({ embeds: [panel.embed], components: panel.components });
 
   if (!result.ok) {
     const message =
       result.code === 'not-recording'
         ? c('Não há gravação ativa para finalizar.')
-        : c('Houve um erro ao transcrever. Os áudios foram mantidos para uma nova tentativa.');
-    await interaction.editReply({ content: message, components });
+        : `⚠️ ${c('Houve um erro ao transcrever. Os áudios foram mantidos para uma nova tentativa.')}`;
+    await announcePublicly(interaction, message);
     return;
   }
 
   if (result.emptyMessage) {
-    await interaction.editReply({
-      content: c('Gravação encerrada, mas nenhuma fala foi capturada — nada para transcrever.'),
-      components,
-    });
+    await announcePublicly(interaction, c('Gravação encerrada, mas nenhuma fala foi capturada — nada para transcrever.'));
     return;
   }
 
@@ -194,13 +269,14 @@ async function handlePanelFinish(interaction) {
         name: result.parts.length > 1 ? `transcricao-parte-${index + 1}.md` : 'transcricao.md',
       }),
   );
-  await interaction.editReply({ content: `✅ ${c('Gravação finalizada. Transcrição em anexo.')}`, components, files });
+  await announcePublicly(interaction, { content: `✅ ${c('Gravação finalizada. Transcrição em anexo.')}`, files });
 }
 
 const PANEL_BUTTON_HANDLERS = {
   [RECORDING_START_ID]: handlePanelStart,
   [RECORDING_PAUSE_ID]: handlePanelPause,
   [RECORDING_FINISH_ID]: handlePanelFinish,
+  [RECORDING_CANCEL_ID]: handlePanelCancel,
 };
 
 client.on('interactionCreate', async (interaction) => {
