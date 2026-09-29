@@ -1,9 +1,32 @@
-# Cebolinha
+```
+        \|  |/
+       \ \  / /
+        \ \/ /
+       .-'--'-.
+      /  o  o  \
+     |     v    |
+      \  ____  /
+       '.____.'
 
-<!-- Troque <seu-usuario> pelo dono real do repo no GitHub depois de publicar. -->
+   ____ _____ ____   ___  _     ___ _   _ _   _    _
+  / ___| ____| __ ) / _ \| |   |_ _| \ | | | | |  / \
+ | |   |  _| |  _ \| | | | |    | ||  \| | |_| | / _ \
+ | |___| |___| |_) | |_| | |___ | || |\  |  _  |/ ___ \
+  \____|_____|____/ \___/|_____|___|_| \_|_| |_/_/   \_\
+```
+
 [![CI](https://github.com/<seu-usuario>/cebolinha/actions/workflows/ci.yml/badge.svg)](https://github.com/<seu-usuario>/cebolinha/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.12-brightgreen)](package.json)
+
+Ola, cololindo! Aqui é o Cebolinha (ou "Cebolinda" plos inimigos), e esse
+plojeto é meu: um bot de discold que gluva as chamadas de voz do seu
+selvidol e faz uma tlanscrição automática de quem falou o quê — sem pagar
+nada, sem entlar no meu computadol. Não muda nada eu falal l no lugal de
+l, faz palte do pelsonagem, uó! A palti de agola eu vou falar celto
+(pomete), pra você não se pelder nas instluções.
+
+## O que ele faz
 
 Bot de Discord open source pra gerenciar chamadas de voz de um servidor:
 conectar/mover/desconectar/silenciar usuários, e gravar reuniões com
@@ -179,3 +202,9 @@ Este bot grava voz de pessoas reais. `/c-start` sempre avisa explicitamente
 no canal de texto que a gravação começou — nunca grave sem esse aviso. Os
 áudios brutos são apagados automaticamente após `/c-finish` ou `/c-cancel`
 (ou pelo fail-safe de inatividade), exceto se `KEEP_AUDIO=true` no `.env`.
+
+---
+
+Pluntinho, é isso. Se algo não funcionar, abre uma issue que eu (quer
+dizel, quem estivel cuidando do lepositólio) dou uma olhada. Tchau,
+cololindo! 🧅
