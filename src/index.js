@@ -10,6 +10,8 @@ import { finishSession, cancelSession } from './core/session-lifecycle.js';
 import { commands } from './commands/index.js';
 import { registerCommands } from './register-commands.js';
 import { printBanner } from './utils/banner.js';
+import { isMuteExempt } from './core/mute-exempt.js';
+import { buildMutePanelComponents, MUTE_TOGGLE_PREFIX } from './core/mute-panel-components.js';
 import { cebolinhaSpeak as c } from './utils/cebolinha-speak.js';
 
 printBanner();
@@ -33,7 +35,59 @@ client.once('ready', async () => {
   }
 });
 
+/**
+ * Alterna o mute de um usuário clicado no painel `/c-mute-panel` e
+ * atualiza os botões da mesma mensagem com o estado atual de todo mundo
+ * que aparece nela (não só de quem foi clicado).
+ * @param {import('discord.js').ButtonInteraction} interaction
+ * @param {import('pino').Logger} logger
+ */
+async function handleMuteToggle(interaction, logger) {
+  const userId = interaction.customId.slice(MUTE_TOGGLE_PREFIX.length + 1);
+  const guildLogger = logger.child({ guildId: interaction.guildId });
+
+  const member = await interaction.guild.members.fetch(userId).catch(() => null);
+  if (!member) {
+    await interaction.reply({ content: c('Não encontrei mais esse usuário.'), ephemeral: true });
+    return;
+  }
+  if (isMuteExempt(member)) {
+    await interaction.reply({ content: c('Não silencio administradores.'), ephemeral: true });
+    return;
+  }
+  if (!member.voice.channelId) {
+    await interaction.reply({ content: c('Esse usuário não está mais em um canal de voz.'), ephemeral: true });
+    return;
+  }
+
+  try {
+    await member.voice.setMute(!member.voice.serverMute, 'Alternado via painel /c-mute-panel');
+  } catch (err) {
+    guildLogger.error({ err: err.message, userId }, 'Falha ao alternar mute via painel');
+    await interaction.reply({ content: c('Não consegui alternar o mute desse usuário.'), ephemeral: true });
+    return;
+  }
+
+  const panelUserIds = interaction.message.components.flatMap((row) =>
+    row.components.map((button) => button.customId.slice(MUTE_TOGGLE_PREFIX.length + 1)),
+  );
+  const panelMembers = (
+    await Promise.all(panelUserIds.map((id) => interaction.guild.members.fetch(id).catch(() => null)))
+  ).filter(Boolean);
+
+  await interaction.update({ components: buildMutePanelComponents(panelMembers) });
+}
+
 client.on('interactionCreate', async (interaction) => {
+  if (interaction.isButton() && interaction.customId.startsWith(`${MUTE_TOGGLE_PREFIX}:`)) {
+    try {
+      await handleMuteToggle(interaction, logger);
+    } catch (err) {
+      logger.error({ err: err.message, guildId: interaction.guildId }, 'Erro não tratado no painel de mute');
+    }
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   const command = commands.get(interaction.commandName);
