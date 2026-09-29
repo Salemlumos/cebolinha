@@ -9,7 +9,7 @@ import { createLogger } from '../src/utils/logger.js';
 import { registerCommands } from '../src/register-commands.js';
 
 const env = loadEnv();
-const logger = createLogger({ level: env.LOG_LEVEL });
+const logger = createLogger({ level: env.LOG_LEVEL, pretty: process.env.NODE_ENV !== 'production' });
 
 try {
   await registerCommands(env, logger);

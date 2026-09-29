@@ -159,7 +159,7 @@ function recordUserToWav(receiver, userId, outputPath, silenceMs, logger) {
 
 async function main() {
   const env = loadEnv();
-  const logger = createLogger({ level: env.LOG_LEVEL });
+  const logger = createLogger({ level: env.LOG_LEVEL, pretty: process.env.NODE_ENV !== 'production' });
   logVersions(logger);
 
   const [channelId, targetUserId, timeoutArg] = process.argv.slice(2);

@@ -9,10 +9,13 @@ import { createNicknameStore } from './core/nickname-store.js';
 import { finishSession, cancelSession } from './core/session-lifecycle.js';
 import { commands } from './commands/index.js';
 import { registerCommands } from './register-commands.js';
+import { printBanner } from './utils/banner.js';
 import { cebolinhaSpeak as c } from './utils/cebolinha-speak.js';
 
+printBanner();
+
 const env = loadEnv();
-const logger = createLogger({ level: env.LOG_LEVEL });
+const logger = createLogger({ level: env.LOG_LEVEL, pretty: process.env.NODE_ENV !== 'production' });
 const sessionManager = createSessionManager();
 const recorderRegistry = createRecorderRegistry();
 const nicknameStore = createNicknameStore();
